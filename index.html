@@ -117,15 +117,15 @@
     .price {
       font-size: 3em;
       font-weight: bold;
-      color: #00ff88;
+      color: #ff4757;  /* 红色涨 */
     }
-    .price.down { color: #ff4757; }
+    .price.down { color: #00ff88; }  /* 绿色跌 */
     .change {
       font-size: 1.3em;
       margin-top: 5px;
     }
-    .change.up { color: #00ff88; }
-    .change.down { color: #ff4757; }
+    .change.up { color: #ff4757; }  /* 红色涨 */
+    .change.down { color: #00ff88; }  /* 绿色跌 */
     
     .cards {
       display: grid;
@@ -461,42 +461,46 @@
         const parts = data.split('=')[1].replace(/"/g, '').split('~');
         
         if (symbol.startsWith('hk')) {
+          // 港股数据格式 (腾讯API)
+          // parts[3]=现价, [4]=昨收, [5]=今开, [33]=最高, [34]=最低
+          // [36]=成交额(万), [37]=换手率, [44]=总市值(亿), [52]=PE, [53]=PB
           return {
             code: code,
             name: parts[1],
-            price: parseFloat(parts[3]),
-            preClose: parseFloat(parts[4]),
-            open: parseFloat(parts[5]),
-            high: parseFloat(parts[33]),
-            low: parseFloat(parts[34]),
-            volume: parseFloat(parts[36]),
-            turnover: parseFloat(parts[37]) || 0,
-            change: parseFloat(parts[3]) - parseFloat(parts[4]),
-            changePercent: ((parseFloat(parts[3]) - parseFloat(parts[4])) / parseFloat(parts[4]) * 100),
+            price: parseFloat(parts[3]) || 0,
+            preClose: parseFloat(parts[4]) || 0,
+            open: parseFloat(parts[5]) || 0,
+            high: parseFloat(parts[33]) || 0,
+            low: parseFloat(parts[34]) || 0,
+            volume: parseFloat(parts[36]) || 0,  // 成交额(万)
+            turnover: parseFloat(parts[37]) || 0,  // 换手率(%)
+            change: (parseFloat(parts[3]) || 0) - (parseFloat(parts[4]) || 0),
+            changePercent: ((parseFloat(parts[3]) || 0) - (parseFloat(parts[4]) || 0)) / (parseFloat(parts[4]) || 1) * 100,
             pe: parseFloat(parts[52]) || 0,
             pb: parseFloat(parts[53]) || 0,
-            marketCap: parseFloat(parts[44]) || 0,
+            marketCap: parseFloat(parts[44]) || 0,  // 总市值(亿)
             week52High: parseFloat(parts[43]) || 0,
-            week52Low: parseFloat(parts[44]) || 0,
+            week52Low: parseFloat(parts[34]) || 0,
             dividend: parseFloat(parts[62]) || 0,
             isHK: true
           };
         } else {
+          // A股数据格式 (腾讯API)
           return {
             code: code,
             name: parts[1],
-            price: parseFloat(parts[3]),
-            preClose: parseFloat(parts[4]),
-            open: parseFloat(parts[5]),
-            high: parseFloat(parts[33]),
-            low: parseFloat(parts[34]),
-            volume: parseFloat(parts[36]),
-            turnover: parseFloat(parts[37]) || 0,
-            change: parseFloat(parts[3]) - parseFloat(parts[4]),
-            changePercent: ((parseFloat(parts[3]) - parseFloat(parts[4])) / parseFloat(parts[4]) * 100),
+            price: parseFloat(parts[3]) || 0,
+            preClose: parseFloat(parts[4]) || 0,
+            open: parseFloat(parts[5]) || 0,
+            high: parseFloat(parts[33]) || 0,
+            low: parseFloat(parts[34]) || 0,
+            volume: parseFloat(parts[36]) || 0,  // 成交额(万)
+            turnover: parseFloat(parts[37]) || 0,  // 换手率(%)
+            change: (parseFloat(parts[3]) || 0) - (parseFloat(parts[4]) || 0),
+            changePercent: ((parseFloat(parts[3]) || 0) - (parseFloat(parts[4]) || 0)) / (parseFloat(parts[4]) || 1) * 100,
             pe: parseFloat(parts[52]) || 0,
             pb: parseFloat(parts[53]) || 0,
-            marketCap: parseFloat(parts[44]) || 0,
+            marketCap: parseFloat(parts[44]) || 0,  // 总市值(亿)
             week52High: parseFloat(parts[43]) || 0,
             week52Low: parseFloat(parts[44]) || 0,
             dividend: parseFloat(parts[62]) || 0,
