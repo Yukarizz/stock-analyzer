@@ -473,7 +473,7 @@
             high: parseFloat(parts[33]) || 0,
             low: parseFloat(parts[34]) || 0,
             volume: parseFloat(parts[36]) || 0,  // 成交额(万)
-            turnover: parseFloat(parts[37]) || 0,  // 换手率(%)
+            turnover: (parseFloat(parts[37]) || 0) / 10000,  // 换手率(%)，腾讯API返回的是万分之一
             change: (parseFloat(parts[3]) || 0) - (parseFloat(parts[4]) || 0),
             changePercent: ((parseFloat(parts[3]) || 0) - (parseFloat(parts[4]) || 0)) / (parseFloat(parts[4]) || 1) * 100,
             pe: parseFloat(parts[52]) || 0,
@@ -486,6 +486,8 @@
           };
         } else {
           // A股数据格式 (腾讯API)
+          // parts[3]=现价, [4]=昨收, [5]=今开, [33]=最高, [34]=最低
+          // [36]=成交量(手), [37]=换手率(万分之一), [44]=总市值(万), [45]=52周高, [46]=52周低
           return {
             code: code,
             name: parts[1],
@@ -494,13 +496,13 @@
             open: parseFloat(parts[5]) || 0,
             high: parseFloat(parts[33]) || 0,
             low: parseFloat(parts[34]) || 0,
-            volume: parseFloat(parts[36]) || 0,  // 成交额(万)
-            turnover: parseFloat(parts[37]) || 0,  // 换手率(%)
+            volume: parseFloat(parts[36]) || 0,  // 成交量(手)
+            turnover: (parseFloat(parts[37]) || 0) / 10000,  // 换手率(%)，腾讯API返回的是万分之一
             change: (parseFloat(parts[3]) || 0) - (parseFloat(parts[4]) || 0),
             changePercent: ((parseFloat(parts[3]) || 0) - (parseFloat(parts[4]) || 0)) / (parseFloat(parts[4]) || 1) * 100,
             pe: parseFloat(parts[52]) || 0,
             pb: parseFloat(parts[53]) || 0,
-            marketCap: parseFloat(parts[44]) || 0,  // 总市值(亿)
+            marketCap: parseFloat(parts[44]) || 0,  // 总市值(万)
             week52High: parseFloat(parts[45]) || 0,  // 52周最高
             week52Low: parseFloat(parts[46]) || 0,   // 52周最低
             dividend: parseFloat(parts[62]) || 0,
