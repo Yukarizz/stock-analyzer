@@ -13,7 +13,7 @@
       color: #fff;
     }
     .container {
-      max-width: 900px;
+      max-width: 1000px;
       margin: 0 auto;
       padding: 20px;
     }
@@ -94,10 +94,7 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
     
-    .result {
-      display: none;
-      animation: fadeIn 0.5s ease;
-    }
+    .result { display: none; animation: fadeIn 0.5s ease; }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(20px); }
       to { opacity: 1; transform: translateY(0); }
@@ -116,9 +113,7 @@
     }
     .stock-info h2 { font-size: 2em; margin-bottom: 10px; }
     .stock-code { color: #8892b0; font-size: 1.2em; }
-    .stock-price {
-      text-align: right;
-    }
+    .stock-price { text-align: right; }
     .price {
       font-size: 3em;
       font-weight: bold;
@@ -134,8 +129,8 @@
     
     .cards {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
       margin-bottom: 20px;
     }
     .card {
@@ -145,7 +140,29 @@
       text-align: center;
     }
     .card-label { color: #8892b0; font-size: 0.9em; margin-bottom: 8px; }
-    .card-value { font-size: 1.8em; font-weight: bold; }
+    .card-value { font-size: 1.6em; font-weight: bold; }
+    
+    .levels-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .level-card {
+      background: rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      border-left: 4px solid;
+    }
+    .level-card.resistance { border-left-color: #ff4757; }
+    .level-card.support { border-left-color: #00ff88; }
+    .level-card.stoploss { border-left-color: #ff6b6b; }
+    .level-card.target { border-left-color: #00d9ff; }
+    .level-card.buy { border-left-color: #ffa502; }
+    .level-label { color: #8892b0; font-size: 0.9em; margin-bottom: 8px; }
+    .level-value { font-size: 1.8em; font-weight: bold; }
+    .level-desc { font-size: 0.8em; color: #8892b0; margin-top: 5px; }
     
     .analysis-section {
       background: rgba(255,255,255,0.08);
@@ -156,6 +173,9 @@
     .analysis-section h3 {
       margin-bottom: 20px;
       color: #00d9ff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
     .score-circle {
       width: 120px;
@@ -194,19 +214,34 @@
     .tag-sell { background: rgba(255,71,87,0.2); color: #ff4757; }
     .tag-hold { background: rgba(255,193,7,0.2); color: #ffc107; }
     
-    .risk-list, .highlight-list {
-      list-style: none;
-    }
+    .risk-list, .highlight-list { list-style: none; }
     .risk-list li, .highlight-list li {
       padding: 10px 0;
       border-bottom: 1px solid rgba(255,255,255,0.1);
     }
-    .risk-list li::before {
-      content: '⚠️ ';
+    .risk-list li::before { content: '⚠️ '; }
+    .highlight-list li::before { content: '✨ '; }
+    
+    .signal-box {
+      background: linear-gradient(135deg, rgba(0,217,255,0.1), rgba(0,255,136,0.1));
+      border: 1px solid rgba(0,217,255,0.3);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      text-align: center;
     }
-    .highlight-list li::before {
-      content: '✨ ';
+    .signal-title { font-size: 1.2em; color: #00d9ff; margin-bottom: 15px; }
+    .signal-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
     }
+    .signal-item { text-align: center; }
+    .signal-label { font-size: 0.9em; color: #8892b0; margin-bottom: 5px; }
+    .signal-value { font-size: 1.5em; font-weight: bold; }
+    .signal-value.buy { color: #00ff88; }
+    .signal-value.sell { color: #ff4757; }
+    .signal-value.neutral { color: #ffc107; }
     
     .error {
       background: rgba(255,71,87,0.2);
@@ -223,6 +258,7 @@
       .price { font-size: 2em; }
       .input-group { flex-direction: column; }
       input { width: 100%; }
+      .signal-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -261,6 +297,30 @@
 
       <div class="cards">
         <div class="card">
+          <div class="card-label">今开</div>
+          <div class="card-value" id="openPrice">--</div>
+        </div>
+        <div class="card">
+          <div class="card-label">最高</div>
+          <div class="card-value" id="highPrice">--</div>
+        </div>
+        <div class="card">
+          <div class="card-label">最低</div>
+          <div class="card-value" id="lowPrice">--</div>
+        </div>
+        <div class="card">
+          <div class="card-label">昨收</div>
+          <div class="card-value" id="preClose">--</div>
+        </div>
+        <div class="card">
+          <div class="card-label">成交量</div>
+          <div class="card-value" id="volume">--</div>
+        </div>
+        <div class="card">
+          <div class="card-label">换手率</div>
+          <div class="card-value" id="turnover">--</div>
+        </div>
+        <div class="card">
           <div class="card-label">市盈率 (PE)</div>
           <div class="card-value" id="pe">--</div>
         </div>
@@ -273,8 +333,65 @@
           <div class="card-value" id="marketCap">--</div>
         </div>
         <div class="card">
-          <div class="card-label">涨跌幅</div>
-          <div class="card-value" id="changePercent">--</div>
+          <div class="card-label">52周最高</div>
+          <div class="card-value" id="week52High">--</div>
+        </div>
+        <div class="card">
+          <div class="card-label">52周最低</div>
+          <div class="card-value" id="week52Low">--</div>
+        </div>
+        <div class="card">
+          <div class="card-label">股息率</div>
+          <div class="card-value" id="dividend">--</div>
+        </div>
+      </div>
+
+      <div class="analysis-section">
+        <h3>🎯 关键价位</h3>
+        <div class="levels-grid">
+          <div class="level-card resistance">
+            <div class="level-label">压力位</div>
+            <div class="level-value" id="resistance">--</div>
+            <div class="level-desc">上方阻力</div>
+          </div>
+          <div class="level-card support">
+            <div class="level-label">支撑位</div>
+            <div class="level-value" id="support">--</div>
+            <div class="level-desc">下方支撑</div>
+          </div>
+          <div class="level-card target">
+            <div class="level-label">目标价</div>
+            <div class="level-value" id="targetPrice">--</div>
+            <div class="level-desc">预期涨幅</div>
+          </div>
+          <div class="level-card stoploss">
+            <div class="level-label">止损位</div>
+            <div class="level-value" id="stopLoss">--</div>
+            <div class="level-desc">风险控制</div>
+          </div>
+          <div class="level-card buy">
+            <div class="level-label">建议买入价</div>
+            <div class="level-value" id="buyPrice">--</div>
+            <div class="level-desc">理想买点</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="signal-box">
+        <div class="signal-title">📊 交易信号</div>
+        <div class="signal-grid">
+          <div class="signal-item">
+            <div class="signal-label">短期信号</div>
+            <div class="signal-value" id="shortSignal">--</div>
+          </div>
+          <div class="signal-item">
+            <div class="signal-label">中期信号</div>
+            <div class="signal-value" id="midSignal">--</div>
+          </div>
+          <div class="signal-item">
+            <div class="signal-label">长期信号</div>
+            <div class="signal-value" id="longSignal">--</div>
+          </div>
         </div>
       </div>
 
@@ -291,6 +408,7 @@
         <div style="margin-bottom: 20px;">
           <span class="tag" id="valuationTag">估值：--</span>
           <span class="tag" id="trendTag">趋势：--</span>
+          <span class="tag" id="volumeTag">量能：--</span>
         </div>
         <div style="background: rgba(0,217,255,0.1); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
           <strong>操作建议：</strong>
@@ -315,14 +433,12 @@
   </div>
 
   <script>
-    // 直接调用新浪财经 API（无需后端服务器）
+    // 直接调用腾讯财经 API
     async function fetchStockData(code) {
-      // 判断市场类型
       let symbol;
       const codeNum = parseInt(code);
       
       if (code.length === 5 || (code.length === 4 && codeNum >= 1 && codeNum <= 9999)) {
-        // 港股
         symbol = `hk${code}`;
       } else if (code.startsWith('6')) {
         symbol = `sh${code}`;
@@ -333,7 +449,6 @@
       }
 
       try {
-        // 使用腾讯财经 API（支持 CORS）
         const response = await fetch(`https://qt.gtimg.cn/q=${symbol}`);
         const buffer = await response.arrayBuffer();
         const decoder = new TextDecoder('gbk');
@@ -346,7 +461,6 @@
         const parts = data.split('=')[1].replace(/"/g, '').split('~');
         
         if (symbol.startsWith('hk')) {
-          // 港股数据格式
           return {
             code: code,
             name: parts[1],
@@ -355,16 +469,19 @@
             open: parseFloat(parts[5]),
             high: parseFloat(parts[33]),
             low: parseFloat(parts[34]),
+            volume: parseFloat(parts[36]),
+            turnover: parseFloat(parts[37]) || 0,
             change: parseFloat(parts[3]) - parseFloat(parts[4]),
             changePercent: ((parseFloat(parts[3]) - parseFloat(parts[4])) / parseFloat(parts[4]) * 100),
-            volume: parseFloat(parts[36]),
             pe: parseFloat(parts[52]) || 0,
             pb: parseFloat(parts[53]) || 0,
             marketCap: parseFloat(parts[44]) || 0,
+            week52High: parseFloat(parts[43]) || 0,
+            week52Low: parseFloat(parts[44]) || 0,
+            dividend: parseFloat(parts[62]) || 0,
             isHK: true
           };
         } else {
-          // A股数据格式
           return {
             code: code,
             name: parts[1],
@@ -373,12 +490,16 @@
             open: parseFloat(parts[5]),
             high: parseFloat(parts[33]),
             low: parseFloat(parts[34]),
+            volume: parseFloat(parts[36]),
+            turnover: parseFloat(parts[37]) || 0,
             change: parseFloat(parts[3]) - parseFloat(parts[4]),
             changePercent: ((parseFloat(parts[3]) - parseFloat(parts[4])) / parseFloat(parts[4]) * 100),
-            volume: parseFloat(parts[36]),
             pe: parseFloat(parts[52]) || 0,
             pb: parseFloat(parts[53]) || 0,
             marketCap: parseFloat(parts[44]) || 0,
+            week52High: parseFloat(parts[43]) || 0,
+            week52Low: parseFloat(parts[44]) || 0,
+            dividend: parseFloat(parts[62]) || 0,
             isHK: false
           };
         }
@@ -388,8 +509,60 @@
       }
     }
 
+    function calculateLevels(data) {
+      const { price, high, low, preClose, changePercent, isHK } = data;
+      
+      // 计算压力位（基于今日高点和前期高点）
+      const resistance = Math.max(high, preClose * 1.03).toFixed(2);
+      
+      // 计算支撑位（基于今日低点和前期低点）
+      const support = Math.min(low, preClose * 0.97).toFixed(2);
+      
+      // 计算目标价（基于估值修复空间）
+      let targetPrice;
+      if (isHK) {
+        targetPrice = (price * 1.15).toFixed(2); // 港股目标15%涨幅
+      } else {
+        targetPrice = (price * 1.12).toFixed(2); // A股目标12%涨幅
+      }
+      
+      // 计算止损位（5-8%止损）
+      const stopLoss = (price * 0.93).toFixed(2);
+      
+      // 建议买入价（回调至支撑位附近）
+      const buyPrice = (parseFloat(support) * 1.01).toFixed(2);
+      
+      return { resistance, support, targetPrice, stopLoss, buyPrice };
+    }
+
+    function generateSignals(data) {
+      const { changePercent, pe, pb, turnover, isHK } = data;
+      
+      // 短期信号（基于价格和量能）
+      let shortSignal = '中性';
+      if (changePercent > 3 && turnover > 3) shortSignal = '买入';
+      else if (changePercent < -3) shortSignal = '卖出';
+      else if (changePercent > 1) shortSignal = '看多';
+      else if (changePercent < -1) shortSignal = '看空';
+      
+      // 中期信号（基于估值）
+      let midSignal = '中性';
+      const peThreshold = isHK ? 15 : 30;
+      if (pe > 0 && pe < peThreshold && changePercent > 0) midSignal = '买入';
+      else if (pe > peThreshold * 2) midSignal = '卖出';
+      else if (pe > 0 && pe < peThreshold) midSignal = '看多';
+      
+      // 长期信号（基于基本面）
+      let longSignal = '中性';
+      if (pe > 0 && pe < (isHK ? 10 : 20) && pb < 3) longSignal = '强烈买入';
+      else if (pe > 0 && pe < (isHK ? 15 : 35)) longSignal = '买入';
+      else if (pe > (isHK ? 40 : 80)) longSignal = '卖出';
+      
+      return { shortSignal, midSignal, longSignal };
+    }
+
     function analyzeData(data) {
-      const { pe, pb, changePercent, isHK } = data;
+      const { pe, pb, changePercent, turnover, volume, isHK } = data;
       
       // 估值判断
       let valuation = '合理';
@@ -411,6 +584,12 @@
       if (changePercent > 5) trend = '大幅上涨';
       if (changePercent < -3) trend = '弱势下跌';
       if (changePercent < -5) trend = '大幅下跌';
+
+      // 量能判断
+      let volumeStatus = '正常';
+      if (turnover > 5) volumeStatus = '放量';
+      if (turnover > 10) volumeStatus = '巨量';
+      if (turnover < 1) volumeStatus = '缩量';
 
       // 操作建议
       let suggestion = '持有观望';
@@ -445,18 +624,21 @@
       if (pb > 10) risks.push('市净率较高');
       if (changePercent > 5) risks.push('短期涨幅较大，注意获利回吐');
       if (changePercent < -5) risks.push('短期跌幅较大，注意继续下行风险');
+      if (turnover > 10) risks.push('成交量异常放大，注意变盘风险');
       if (risks.length === 0) risks.push('暂无重大风险');
 
       // 亮点
       const highlights = [];
-      if (pe > 0 && pe < (isHK ? 10 : 20)) highlights.push('估值处于较低水平');
-      if (changePercent > 3) highlights.push('今日表现强势');
-      if (pb > 0 && pb < 3) highlights.push('市净率较低，安全边际高');
+      if (pe > 0 && pe < (isHK ? 10 : 20)) highlights.push('估值处于较低水平，具备安全边际');
+      if (changePercent > 3) highlights.push('今日表现强势，资金关注度高');
+      if (pb > 0 && pb < 3) highlights.push('市净率较低，资产质量较好');
+      if (turnover > 3 && changePercent > 0) highlights.push('放量上涨，动能充足');
       if (highlights.length === 0) highlights.push('暂无特别亮点');
 
       return {
         valuation,
         trend,
+        volumeStatus,
         suggestion,
         score,
         risks,
@@ -471,7 +653,6 @@
         return;
       }
 
-      // 显示加载
       document.getElementById('loading').style.display = 'block';
       document.getElementById('result').style.display = 'none';
       document.getElementById('error').style.display = 'none';
@@ -479,8 +660,10 @@
       try {
         const data = await fetchStockData(code);
         const analysis = analyzeData(data);
+        const levels = calculateLevels(data);
+        const signals = generateSignals(data);
         
-        // 更新页面
+        // 基本信息
         document.getElementById('stockName').textContent = data.name;
         document.getElementById('stockCodeDisplay').textContent = 
           `${data.code} (${data.isHK ? '港股' : 'A股'})`;
@@ -489,15 +672,42 @@
         const changeEl = document.getElementById('stockChange');
         changeEl.textContent = `${data.change >= 0 ? '+' : ''}${data.change.toFixed(2)} (${data.changePercent >= 0 ? '+' : ''}${data.changePercent.toFixed(2)}%)`;
         changeEl.className = 'change ' + (data.change >= 0 ? 'up' : 'down');
-        
         document.getElementById('stockPrice').className = 'price ' + (data.change >= 0 ? '' : 'down');
         
+        // 详细数据
+        document.getElementById('openPrice').textContent = data.open.toFixed(2);
+        document.getElementById('highPrice').textContent = data.high.toFixed(2);
+        document.getElementById('lowPrice').textContent = data.low.toFixed(2);
+        document.getElementById('preClose').textContent = data.preClose.toFixed(2);
+        document.getElementById('volume').textContent = (data.volume / 10000).toFixed(2) + '万';
+        document.getElementById('turnover').textContent = data.turnover.toFixed(2) + '%';
         document.getElementById('pe').textContent = data.pe > 0 ? data.pe.toFixed(2) : '--';
         document.getElementById('pb').textContent = data.pb > 0 ? data.pb.toFixed(2) : '--';
         document.getElementById('marketCap').textContent = data.marketCap > 0 ? 
           (data.marketCap / 10000).toFixed(2) + '亿' : '--';
-        document.getElementById('changePercent').textContent = 
-          `${data.changePercent >= 0 ? '+' : ''}${data.changePercent.toFixed(2)}%`;
+        document.getElementById('week52High').textContent = data.week52High > 0 ? data.week52High.toFixed(2) : '--';
+        document.getElementById('week52Low').textContent = data.week52Low > 0 ? data.week52Low.toFixed(2) : '--';
+        document.getElementById('dividend').textContent = data.dividend > 0 ? data.dividend.toFixed(2) + '%' : '--';
+        
+        // 关键价位
+        document.getElementById('resistance').textContent = levels.resistance;
+        document.getElementById('support').textContent = levels.support;
+        document.getElementById('targetPrice').textContent = levels.targetPrice;
+        document.getElementById('stopLoss').textContent = levels.stopLoss;
+        document.getElementById('buyPrice').textContent = levels.buyPrice;
+        
+        // 交易信号
+        const shortEl = document.getElementById('shortSignal');
+        shortEl.textContent = signals.shortSignal;
+        shortEl.className = 'signal-value ' + (signals.shortSignal === '买入' ? 'buy' : signals.shortSignal === '卖出' ? 'sell' : 'neutral');
+        
+        const midEl = document.getElementById('midSignal');
+        midEl.textContent = signals.midSignal;
+        midEl.className = 'signal-value ' + (signals.midSignal === '买入' ? 'buy' : signals.midSignal === '卖出' ? 'sell' : 'neutral');
+        
+        const longEl = document.getElementById('longSignal');
+        longEl.textContent = signals.longSignal;
+        longEl.className = 'signal-value ' + (signals.longSignal.includes('买入') ? 'buy' : signals.longSignal === '卖出' ? 'sell' : 'neutral');
         
         // 评分
         document.getElementById('score').textContent = analysis.score;
@@ -506,6 +716,7 @@
         // 标签
         document.getElementById('valuationTag').textContent = `估值：${analysis.valuation}`;
         document.getElementById('trendTag').textContent = `趋势：${analysis.trend}`;
+        document.getElementById('volumeTag').textContent = `量能：${analysis.volumeStatus}`;
         document.getElementById('suggestion').textContent = analysis.suggestion;
         
         // 亮点和风险
@@ -514,7 +725,6 @@
         document.getElementById('risks').innerHTML = 
           analysis.risks.map(r => `<li>${r}</li>`).join('');
         
-        // 显示结果
         document.getElementById('loading').style.display = 'none';
         document.getElementById('result').style.display = 'block';
         
@@ -530,7 +740,6 @@
       errorEl.style.display = 'block';
     }
 
-    // 回车键触发
     document.getElementById('stockCode').addEventListener('keypress', function(e) {
       if (e.key === 'Enter') {
         analyzeStock();
