@@ -473,7 +473,7 @@
             high: parseFloat(parts[33]) || 0,
             low: parseFloat(parts[34]) || 0,
             volume: parseFloat(parts[36]) || 0,  // 成交额(万)
-            turnover: (parseFloat(parts[37]) || 0) / 10000,  // 换手率(%)，腾讯API返回的是万分之一
+            turnover: parseFloat(parts[37]) || 0,  // 换手率(%)，腾讯API直接返回百分比
             change: (parseFloat(parts[3]) || 0) - (parseFloat(parts[4]) || 0),
             changePercent: ((parseFloat(parts[3]) || 0) - (parseFloat(parts[4]) || 0)) / (parseFloat(parts[4]) || 1) * 100,
             pe: parseFloat(parts[52]) || 0,
@@ -497,7 +497,7 @@
             high: parseFloat(parts[33]) || 0,
             low: parseFloat(parts[34]) || 0,
             volume: parseFloat(parts[36]) || 0,  // 成交量(手)
-            turnover: (parseFloat(parts[37]) || 0) / 10000,  // 换手率(%)，腾讯API返回的是万分之一
+            turnover: parseFloat(parts[37]) || 0,  // 换手率(%)，腾讯API直接返回百分比
             change: (parseFloat(parts[3]) || 0) - (parseFloat(parts[4]) || 0),
             changePercent: ((parseFloat(parts[3]) || 0) - (parseFloat(parts[4]) || 0)) / (parseFloat(parts[4]) || 1) * 100,
             pe: parseFloat(parts[52]) || 0,
