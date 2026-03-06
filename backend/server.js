@@ -2,13 +2,15 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const path = require('path');
-const iconv = require('iconv-lite'); // 添加编码转换库
+const iconv = require('iconv-lite');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+
+// 静态文件服务
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 // 股票数据缓存
@@ -327,7 +329,12 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
-// 启动服务器
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 股票分析服务器运行在 http://localhost:${PORT}`);
-});
+// 启动服务器（本地开发）
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 股票分析服务器运行在 http://localhost:${PORT}`);
+  });
+}
+
+// 导出给 Vercel
+module.exports = app;
