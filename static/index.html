@@ -3,577 +3,422 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>股票分析助手</title>
+  <title>股票分析 - 同花顺版</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-      min-height: 100vh;
-      color: #fff;
-    }
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    header {
-      text-align: center;
-      padding: 40px 0;
-    }
-    h1 {
-      font-size: 2.5em;
-      margin-bottom: 10px;
-      background: linear-gradient(90deg, #00d9ff, #00ff88);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); min-height: 100vh; color: #fff; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    header { text-align: center; padding: 40px 0; }
+    h1 { font-size: 2.5em; margin-bottom: 10px; background: linear-gradient(90deg, #00d9ff, #00ff88); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     .subtitle { color: #8892b0; font-size: 1.1em; }
-    
-    .search-box {
-      background: rgba(255,255,255,0.1);
-      border-radius: 16px;
-      padding: 30px;
-      margin-bottom: 30px;
-      backdrop-filter: blur(10px);
-    }
-    .input-group {
-      display: flex;
-      gap: 15px;
-      flex-wrap: wrap;
-    }
-    input {
-      flex: 1;
-      min-width: 200px;
-      padding: 15px 20px;
-      border: 2px solid rgba(255,255,255,0.2);
-      border-radius: 12px;
-      background: rgba(255,255,255,0.05);
-      color: #fff;
-      font-size: 1.1em;
-      outline: none;
-      transition: border-color 0.3s;
-    }
-    input:focus { border-color: #00d9ff; }
-    input::placeholder { color: #8892b0; }
-    
-    button {
-      padding: 15px 40px;
-      background: linear-gradient(90deg, #00d9ff, #00ff88);
-      border: none;
-      border-radius: 12px;
-      color: #1a1a2e;
-      font-size: 1.1em;
-      font-weight: bold;
-      cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-    button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 30px rgba(0,217,255,0.3);
-    }
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none;
-    }
-    
-    .loading {
-      text-align: center;
-      padding: 40px;
-      display: none;
-    }
-    .spinner {
-      width: 50px;
-      height: 50px;
-      border: 4px solid rgba(255,255,255,0.1);
-      border-top-color: #00d9ff;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 20px;
-    }
+    .search-box { background: rgba(255,255,255,0.1); border-radius: 16px; padding: 30px; margin-bottom: 20px; backdrop-filter: blur(10px); }
+    .input-group { display: flex; gap: 15px; flex-wrap: wrap; }
+    input, textarea { flex: 1; min-width: 200px; padding: 15px 20px; border: 2px solid rgba(255,255,255,0.2); border-radius: 12px; background: rgba(255,255,255,0.05); color: #fff; font-size: 1.1em; outline: none; }
+    input:focus, textarea:focus { border-color: #00d9ff; }
+    textarea { min-height: 100px; resize: vertical; }
+    button { padding: 15px 40px; background: linear-gradient(90deg, #00d9ff, #00ff88); border: none; border-radius: 12px; color: #1a1a2e; font-size: 1.1em; font-weight: bold; cursor: pointer; }
+    button:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,217,255,0.3); }
+    .loading { text-align: center; padding: 40px; display: none; }
+    .spinner { width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.1); border-top-color: #00d9ff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    
-    .result {
-      display: none;
-      animation: fadeIn 0.5s ease;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    
-    .stock-header {
-      background: rgba(255,255,255,0.1);
-      border-radius: 16px;
-      padding: 30px;
-      margin-bottom: 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 20px;
-    }
+    .result { display: none; }
+    .stock-header { background: rgba(255,255,255,0.1); border-radius: 16px; padding: 30px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
     .stock-info h2 { font-size: 2em; margin-bottom: 10px; }
     .stock-code { color: #8892b0; font-size: 1.2em; }
-    .stock-price {
-      text-align: right;
-    }
-    .price {
-      font-size: 3em;
-      font-weight: bold;
-      color: #00ff88;
-    }
-    .price.down { color: #ff4757; }
-    .change {
-      font-size: 1.3em;
-      margin-top: 5px;
-    }
-    .change.up { color: #00ff88; }
-    .change.down { color: #ff4757; }
-    
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 20px;
-      margin-bottom: 20px;
-    }
-    .card {
-      background: rgba(255,255,255,0.08);
-      border-radius: 12px;
-      padding: 20px;
-      text-align: center;
-    }
+    .stock-price { text-align: right; }
+    .price { font-size: 3em; font-weight: bold; color: #ff4757; }
+    .price.down { color: #00ff88; }
+    .change { font-size: 1.3em; margin-top: 5px; }
+    .change.up { color: #ff4757; }
+    .change.down { color: #00ff88; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px; }
+    .card { background: rgba(255,255,255,0.08); border-radius: 12px; padding: 20px; text-align: center; }
     .card-label { color: #8892b0; font-size: 0.9em; margin-bottom: 8px; }
     .card-value { font-size: 1.8em; font-weight: bold; }
-    
-    .analysis-section {
-      background: rgba(255,255,255,0.08);
-      border-radius: 16px;
-      padding: 30px;
-      margin-bottom: 20px;
-    }
-    .section-title {
-      font-size: 1.5em;
-      margin-bottom: 20px;
-      color: #00d9ff;
-    }
-    
-    .score-box {
-      text-align: center;
-      padding: 30px;
-    }
-    .score {
-      font-size: 5em;
-      font-weight: bold;
-      background: linear-gradient(90deg, #00d9ff, #00ff88);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .score-label { color: #8892b0; font-size: 1.2em; margin-top: 10px; }
-    
-    .tag {
-      display: inline-block;
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 0.95em;
-      margin: 5px;
-    }
-    .tag.good { background: rgba(0,255,136,0.2); color: #00ff88; }
-    .tag.warn { background: rgba(255,166,0,0.2); color: #ffa600; }
-    .tag.bad { background: rgba(255,71,87,0.2); color: #ff4757; }
-    
-    .list-item {
-      padding: 12px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
-    }
-    .list-item:last-child { border-bottom: none; }
-    
-    .suggestion {
-      font-size: 1.4em;
-      text-align: center;
-      padding: 20px;
-      background: linear-gradient(90deg, rgba(0,217,255,0.1), rgba(0,255,136,0.1));
-      border-radius: 12px;
-      border: 2px solid rgba(0,217,255,0.3);
-    }
-    
-    .error {
-      background: rgba(255,71,87,0.2);
-      border: 2px solid #ff4757;
-      border-radius: 12px;
-      padding: 20px;
-      text-align: center;
-      color: #ff4757;
-      margin-top: 20px;
-    }
-    
-    footer {
-      text-align: center;
-      padding: 40px 0;
-      color: #8892b0;
-      font-size: 0.9em;
-    }
-    
-    @media (max-width: 600px) {
-      h1 { font-size: 1.8em; }
-      .stock-price { text-align: left; }
-      .price { font-size: 2em; }
-      .input-group { flex-direction: column; }
-      button { width: 100%; }
-    }
+    .analysis-section { background: rgba(255,255,255,0.08); border-radius: 16px; padding: 30px; margin-bottom: 20px; }
+    .section-title { font-size: 1.5em; margin-bottom: 20px; color: #00d9ff; }
+    .holdings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 20px; }
+    .holding-card { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; cursor: pointer; }
+    .holding-card:hover { transform: translateY(-3px); background: rgba(255,255,255,0.1); }
+    .holding-name { font-size: 1.3em; font-weight: bold; margin-bottom: 5px; }
+    .holding-code { color: #8892b0; font-size: 0.9em; }
+    .holding-price { font-size: 1.5em; font-weight: bold; color: #ff4757; margin-top: 10px; }
+    .holding-price.down { color: #00ff88; }
+    .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+    .tab { padding: 10px 20px; background: rgba(255,255,255,0.1); border-radius: 8px; cursor: pointer; }
+    .tab.active { background: linear-gradient(90deg, #00d9ff, #00ff88); color: #1a1a2e; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .error { background: rgba(255,71,87,0.2); border: 2px solid #ff4757; border-radius: 12px; padding: 20px; text-align: center; color: #ff4757; margin-top: 20px; display: none; }
+    .tag { display:inline-block;padding:8px 16px;border-radius:20px;font-size:0.95em;margin:5px; }
+    .tag.good { background:rgba(0,255,136,0.2);color:#00ff88; }
+    .tag.warn { background:rgba(255,166,0,0.2);color:#ffa600; }
+    .tag.bad { background:rgba(255,71,87,0.2);color:#ff4757; }
+    .list-item { padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.1); }
+    .list-item:last-child { border-bottom:none; }
+    footer { text-align: center; padding: 40px 0; color: #8892b0; font-size: 0.9em; }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>📈 股票分析助手</h1>
-      <p class="subtitle">输入股票代码，获取实时行情与智能分析</p>
+      <h1>📈 股票分析 - 同花顺版</h1>
+      <p class="subtitle">同花顺实时行情 · 持仓管理</p>
     </header>
-    
-    <div class="search-box">
-      <div class="input-group">
-        <input type="text" id="stockCode" placeholder="输入股票代码，如：300308 或 600519" />
-        <button onclick="analyzeStock()" id="analyzeBtn">分析</button>
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('single')">个股</div>
+      <div class="tab" onclick="switchTab('holdings')">持仓</div>
+    </div>
+    <div id="singleTab" class="tab-content active">
+      <div class="search-box">
+        <div class="input-group">
+          <input type="text" id="stockCode" placeholder="股票代码，如：300308" />
+          <button onclick="analyzeStock()">分析</button>
+        </div>
+      </div>
+      <div class="loading" id="loading"><div class="spinner"></div><p>加载中...</p></div>
+      <div class="error" id="error"></div>
+      <div class="result" id="result">
+        <div class="stock-header">
+          <div class="stock-info"><h2 id="stockName">--</h2><p class="stock-code" id="stockCodeDisplay">--</p></div>
+          <div class="stock-price"><div class="price" id="stockPrice">--</div><div class="change" id="stockChange">--</div></div>
+        </div>
+        <div class="cards">
+          <div class="card"><div class="card-label">市盈率 (PE)</div><div class="card-value" id="peValue">--</div></div>
+          <div class="card"><div class="card-label">市净率 (PB)</div><div class="card-value" id="pbValue">--</div></div>
+          <div class="card"><div class="card-label">总市值</div><div class="card-value" id="marketCap">--</div></div>
+          <div class="card"><div class="card-label">涨跌幅</div><div class="card-value" id="changePercent">--</div></div>
+        </div>
+        <div class="analysis-section">
+          <h3 class="section-title">📊 分析结果</h3>
+          <div style="margin-bottom:15px;">
+            <span class="tag" id="valuationTag">估值：--</span>
+            <span class="tag" id="trendTag">趋势：--</span>
+          </div>
+          <div style="background:rgba(255,255,255,0.05);border-radius:12px;padding:20px;text-align:center;font-size:1.3em;margin-bottom:20px;" id="suggestionText">--</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;">
+            <div style="background:rgba(0,255,136,0.1);border-radius:12px;padding:15px;text-align:center;">
+              <div style="color:#8892b0;font-size:0.9em;margin-bottom:5px;">推荐买入价</div>
+              <div style="font-size:1.5em;font-weight:bold;color:#00ff88;" id="buyPrice">--</div>
+            </div>
+            <div style="background:rgba(255,166,0,0.1);border-radius:12px;padding:15px;text-align:center;">
+              <div style="color:#8892b0;font-size:0.9em;margin-bottom:5px;">支撑位</div>
+              <div style="font-size:1.5em;font-weight:bold;color:#ffa600;" id="supportPrice">--</div>
+            </div>
+            <div style="background:rgba(0,217,255,0.1);border-radius:12px;padding:15px;text-align:center;">
+              <div style="color:#8892b0;font-size:0.9em;margin-bottom:5px;">压力位</div>
+              <div style="font-size:1.5em;font-weight:bold;color:#00d9ff;" id="resistPrice">--</div>
+            </div>
+            <div style="background:rgba(100,100,255,0.1);border-radius:12px;padding:15px;text-align:center;">
+              <div style="color:#8892b0;font-size:0.9em;margin-bottom:5px;">目标价</div>
+              <div style="font-size:1.5em;font-weight:bold;color:#6464ff;" id="targetPrice">--</div>
+            </div>
+            <div style="background:rgba(255,71,87,0.1);border-radius:12px;padding:15px;text-align:center;">
+              <div style="color:#8892b0;font-size:0.9em;margin-bottom:5px;">止损价</div>
+              <div style="font-size:1.5em;font-weight:bold;color:#ff4757;" id="stopLossPrice">--</div>
+            </div>
+          </div>
+        </div>
+        <div class="analysis-section">
+          <h3 class="section-title">✨ 亮点</h3>
+          <div id="highlightsList"></div>
+        </div>
+        <div class="analysis-section">
+          <h3 class="section-title">⚠️ 风险提示</h3>
+          <div id="risksList"></div>
+        </div>
       </div>
     </div>
-    
-    <div class="loading" id="loading">
-      <div class="spinner"></div>
-      <p>正在分析股票数据...</p>
-    </div>
-    
-    <div class="error" id="error" style="display:none;"></div>
-    
-    <div class="result" id="result">
-      <div class="stock-header">
-        <div class="stock-info">
-          <h2 id="stockName">--</h2>
-          <p class="stock-code" id="stockCodeDisplay">--</p>
-        </div>
-        <div class="stock-price">
-          <div class="price" id="stockPrice">--</div>
-          <div class="change" id="stockChange">--</div>
-        </div>
-      </div>
-      
-      <div class="cards">
-        <div class="card">
-          <div class="card-label">市盈率 (PE)</div>
-          <div class="card-value" id="peValue">--</div>
-        </div>
-        <div class="card">
-          <div class="card-label">市净率 (PB)</div>
-          <div class="card-value" id="pbValue">--</div>
-        </div>
-        <div class="card">
-          <div class="card-label">总市值</div>
-          <div class="card-value" id="marketCap">--</div>
-        </div>
-        <div class="card">
-          <div class="card-label">涨跌幅</div>
-          <div class="card-value" id="changePercent">--</div>
-        </div>
-      </div>
-      
+    <div id="holdingsTab" class="tab-content">
       <div class="analysis-section">
-        <h3 class="section-title">🎯 综合评分</h3>
-        <div class="score-box">
-          <div class="score" id="scoreValue">--</div>
-          <div class="score-label">满分 100 分</div>
-        </div>
+        <h3 class="section-title">📦 导入持仓</h3>
+        <textarea id="holdingsInput" placeholder="300308&#10;600519"></textarea>
+        <button onclick="loadHoldings()" style="margin-top:15px;">导入</button>
+        <button onclick="refreshHoldings()" style="margin-top:15px;margin-left:10px;">🔄 刷新</button>
+        <button onclick="clearHoldings()" style="margin-top:15px;margin-left:10px;background:linear-gradient(90deg,#ff4757,#ff6b7a);">🗑️ 清空</button>
       </div>
-      
       <div class="analysis-section">
-        <h3 class="section-title">📊 分析结果</h3>
-        <div style="margin-bottom: 20px;">
-          <span class="tag" id="valuationTag">估值：--</span>
-          <span class="tag" id="trendTag">趋势：--</span>
-        </div>
-        <div class="suggestion" id="suggestionText">--</div>
-      </div>
-      
-      <div class="analysis-section">
-        <h3 class="section-title">✨ 亮点</h3>
-        <div id="highlightsList"></div>
-      </div>
-      
-      <div class="analysis-section">
-        <h3 class="section-title">⚠️ 风险提示</h3>
-        <div id="risksList"></div>
+        <h3 class="section-title">💼 我的持仓</h3>
+        <div class="holdings-grid" id="holdingsGrid"></div>
       </div>
     </div>
-    
-    <footer>
-      <p>数据来源于公开市场信息 · 仅供参考，不构成投资建议</p>
-    </footer>
+    <footer><p>数据来源于同花顺 · 仅供参考</p></footer>
   </div>
-  
   <script>
-    document.getElementById('stockCode').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') analyzeStock();
-    });
-    
+    let holdings = JSON.parse(localStorage.getItem('holdings') || '[]');
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById(tab + 'Tab').classList.add('active');
+      if (tab === 'holdings') renderHoldings();
+    }
+    document.getElementById('stockCode').addEventListener('keypress', e => { if (e.key === 'Enter') analyzeStock(); });
     async function analyzeStock() {
       const code = document.getElementById('stockCode').value.trim();
-      if (!code) {
-        showError('请输入股票代码');
-        return;
-      }
-      
+      if (!code) { showError('请输入股票代码'); return; }
       document.getElementById('loading').style.display = 'block';
       document.getElementById('result').style.display = 'none';
       document.getElementById('error').style.display = 'none';
-      document.getElementById('analyzeBtn').disabled = true;
-      
       try {
         const data = await fetchStockData(code);
-        if (data) {
-          displayResult(data);
-        } else {
-          showError('未找到股票数据，请检查代码');
-        }
-      } catch (error) {
-        showError('获取数据失败，请稍后重试');
-        console.error(error);
-      } finally {
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('analyzeBtn').disabled = false;
-      }
+        if (data) displayResult(data);
+        else showError('未找到股票数据');
+      } catch (e) { showError('获取失败：' + e.message); }
+      finally { document.getElementById('loading').style.display = 'none'; }
     }
-    
     async function fetchStockData(code) {
-      // 确定市场前缀
       let market = 'sz';
       if (code.startsWith('6')) market = 'sh';
       else if (code.startsWith('4') || code.startsWith('8')) market = 'bj';
       
-      const symbol = `${market}${code}`;
-      
-      // 使用 JSONP 方式获取新浪财经数据
-      return new Promise((resolve) => {
-        const script = document.createElement('script');
-        const callbackName = 'stockCallback_' + Date.now();
+      try {
+        // 同花顺实时行情 API - 获取价格和涨跌
+        const response = await fetch(`https://d.10jqka.com.cn/v6/time/${market}_${code}/last.js`, {
+          headers: { 'Referer': 'https://d.10jqka.com.cn/' }
+        });
+        const text = await response.text();
         
-        window[callbackName] = function(data) {
-          delete window[callbackName];
-          document.body.removeChild(script);
-          
-          if (data && data.length > 0) {
-            const parts = data[0].split(',');
-            if (parts.length >= 32) {
-              const stockData = {
-                code: code,
-                name: parts[0],
-                open: parseFloat(parts[1]),
-                preClose: parseFloat(parts[2]),
-                price: parseFloat(parts[3]),
-                high: parseFloat(parts[4]),
-                low: parseFloat(parts[5]),
-                volume: parseFloat(parts[8]),
-                amount: parseFloat(parts[9]),
-                change: parseFloat(parts[3]) - parseFloat(parts[2]),
-                changePercent: ((parseFloat(parts[3]) - parseFloat(parts[2])) / parseFloat(parts[2]) * 100)
-              };
-              
-              // 获取额外数据
-              fetchExtraData(code, market).then(extra => {
-                Object.assign(stockData, extra);
-                stockData.analysis = generateAnalysis(stockData);
-                resolve(stockData);
-              }).catch(() => {
-                stockData.pe = 0;
-                stockData.pb = 0;
-                stockData.totalMarketCap = 0;
-                stockData.analysis = generateAnalysis(stockData);
-                resolve(stockData);
-              });
-              return;
-            }
-          }
-          resolve(null);
+        const match = text.match(/\(([\s\S]+)\)/);
+        if (!match) return null;
+        
+        const jsonStr = match[1];
+        const data = JSON.parse(jsonStr);
+        const key = `${market}_${code}`;
+        const stock = data[key];
+        
+        if (!stock || !stock.data) return null;
+        
+        // 取最后一笔交易价格
+        const trades = stock.data.split(';');
+        const lastTrade = trades[trades.length - 2];
+        if (!lastTrade) return null;
+        
+        const parts = lastTrade.split(',');
+        const price = parseFloat(parts[1]) || 0;
+        const preClose = parseFloat(stock.pre) || 0;
+        const change = price - preClose;
+        const changePercent = (change / preClose * 100);
+        
+        // 腾讯 API 获取 PE/PB/市值（同花顺分时 API 没有这些数据）
+        const pe = await fetchPE(market, code);
+        
+        return {
+          code,
+          name: stock.name || '未知',
+          price,
+          preClose,
+          change,
+          changePercent,
+          pe: pe.pe,
+          pb: pe.pb,
+          marketCap: pe.marketCap
         };
-        
-        script.src = `https://hq.sinajs.cn/list=${symbol}`;
-        document.body.appendChild(script);
-        
-        // 超时处理
-        setTimeout(() => {
-          delete window[callbackName];
-          if (script.parentNode) script.parentNode.removeChild(script);
-          resolve(null);
-        }, 10000);
-      });
+      } catch (e) {
+        console.error('API 错误:', e);
+        return null;
+      }
     }
     
-    async function fetchExtraData(code, market) {
+    async function fetchPE(market, code) {
       return new Promise((resolve) => {
         const script = document.createElement('script');
-        const callbackName = 'extraCallback_' + Date.now();
-        
-        window[callbackName] = function(data) {
-          delete window[callbackName];
-          document.body.removeChild(script);
-          
-          if (data) {
-            resolve({
-              pe: parseFloat(data.pe) || 0,
-              pb: parseFloat(data.pb) || 0,
-              totalMarketCap: parseFloat(data.marketcap) || 0,
-              eps: parseFloat(data.eps) || 0,
-              bvps: parseFloat(data.bvps) || 0,
-              dividendYield: parseFloat(data.dividend) || 0
-            });
-          } else {
-            resolve({ pe: 0, pb: 0, totalMarketCap: 0, eps: 0, bvps: 0, dividendYield: 0 });
-          }
-        };
-        
-        script.src = `https://quotes.sina.cn/cn/api/jsonp_v2.php/${callbackName}/CN_Service/StockCN.getStockData?symbol=${market}${code}`;
+        script.src = `https://qt.gtimg.cn/q=${market}${code}`;
+        script.charset = 'gbk';
         document.body.appendChild(script);
         
-        setTimeout(() => {
-          delete window[callbackName];
-          if (script.parentNode) script.parentNode.removeChild(script);
-          resolve({ pe: 0, pb: 0, totalMarketCap: 0, eps: 0, bvps: 0, dividendYield: 0 });
+        const timer = setTimeout(() => {
+          document.body.removeChild(script);
+          resolve({ pe: 0, pb: 0, marketCap: 0 });
         }, 5000);
+        
+        const check = setInterval(() => {
+          const varName = `v_${market}${code}`;
+          if (window[varName]) {
+            clearInterval(check);
+            clearTimeout(timer);
+            document.body.removeChild(script);
+            try {
+              const parts = window[varName].split('~');
+              resolve({
+                pe: parseFloat(parts[39]) || 0,
+                pb: parseFloat(parts[46]) || 0,
+                marketCap: parseFloat(parts[45]) || 0
+              });
+            } catch (e) {
+              resolve({ pe: 0, pb: 0, marketCap: 0 });
+            }
+            delete window[varName];
+          }
+        }, 50);
       });
+    }
+    function displayResult(data) {
+      document.getElementById('stockName').textContent = data.name;
+      document.getElementById('stockCodeDisplay').textContent = data.code;
+      const priceEl = document.getElementById('stockPrice');
+      const changeEl = document.getElementById('stockChange');
+      priceEl.textContent = data.price.toFixed(2) + '元';
+      priceEl.className = 'price' + (data.change >= 0 ? '' : ' down');
+      const sign = data.change >= 0 ? '+' : '';
+      changeEl.textContent = `${sign}${data.change.toFixed(2)} (${sign}${data.changePercent.toFixed(2)}%)`;
+      changeEl.className = 'change' + (data.change >= 0 ? ' up' : ' down');
+      document.getElementById('peValue').textContent = data.pe.toFixed(2);
+      document.getElementById('pbValue').textContent = data.pb.toFixed(2);
+      document.getElementById('marketCap').textContent = formatNum(data.marketCap);
+      document.getElementById('changePercent').textContent = `${sign}${data.changePercent.toFixed(2)}%`;
+      document.getElementById('changePercent').style.color = data.change >= 0 ? '#ff4757' : '#00ff88';
+      document.getElementById('result').style.display = 'block';
+    }
+    async function loadHoldings() {
+      const input = document.getElementById('holdingsInput').value.trim();
+      if (!input) { alert('请输入代码'); return; }
+      const codes = input.split(/[\n,,]/).map(s => s.trim()).filter(s => /^\d{6}$/.test(s));
+      if (!codes.length) { alert('无效代码'); return; }
+      holdings = [...new Set([...holdings, ...codes])];
+      localStorage.setItem('holdings', JSON.stringify(holdings));
+      document.getElementById('holdingsInput').value = '';
+      renderHoldings();
+      alert(`导入 ${codes.length} 只股票`);
+    }
+    async function refreshHoldings() { renderHoldings(); }
+    function clearHoldings() {
+      if (confirm('确定清空？')) {
+        holdings = [];
+        localStorage.setItem('holdings', JSON.stringify(holdings));
+        renderHoldings();
+      }
+    }
+    async function renderHoldings() {
+      const grid = document.getElementById('holdingsGrid');
+      if (!holdings.length) { grid.innerHTML = '<p style="color:#8892b0;grid-column:1/-1;text-align:center;">暂无持仓</p>'; return; }
+      grid.innerHTML = '<p style="color:#8892b0;grid-column:1/-1;text-align:center;">加载中...</p>';
+      const results = await Promise.all(holdings.map(code => fetchStockData(code).catch(() => null)));
+      grid.innerHTML = '';
+      results.forEach(data => {
+        if (!data) return;
+        const card = document.createElement('div');
+        card.className = 'holding-card';
+        card.onclick = () => {
+          document.getElementById('stockCode').value = data.code;
+          switchTab('single');
+          document.querySelector('#singleTab .tab').click();
+          analyzeStock();
+        };
+        const sign = data.change >= 0 ? '+' : '';
+        card.innerHTML = `
+          <div class="holding-name">${data.name}</div>
+          <div class="holding-code">${data.code}</div>
+          <div class="holding-price ${data.change >= 0 ? '' : 'down'}">${data.price.toFixed(2)}元</div>
+          <div class="holding-change ${data.change >= 0 ? 'up' : 'down'}" style="font-size:1em;margin-top:5px;">${sign}${data.change.toFixed(2)} (${sign}${data.changePercent.toFixed(2)}%)</div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+    function showError(msg) {
+      document.getElementById('error').textContent = msg;
+      document.getElementById('error').style.display = 'block';
+    }
+    function formatNum(n) {
+      if (!n) return '--';
+      if (n >= 1e8) return (n / 1e8).toFixed(2) + '亿';
+      if (n >= 1e4) return (n / 1e4).toFixed(2) + '万';
+      return n.toFixed(2);
     }
     
     function generateAnalysis(data) {
-      const { pe, pb, changePercent } = data;
+      const { pe, pb, changePercent, price, preClose } = data;
       
+      // 估值判断
       let valuation = '合理';
       if (pe > 50) valuation = '偏高';
       if (pe > 80) valuation = '高估';
       if (pe > 0 && pe < 20) valuation = '偏低';
       if (pe > 0 && pe < 10) valuation = '低估';
       
+      // 趋势判断
       let trend = '震荡';
       if (changePercent > 3) trend = '强势上涨';
       if (changePercent > 5) trend = '大幅上涨';
       if (changePercent < -3) trend = '弱势下跌';
       if (changePercent < -5) trend = '大幅下跌';
       
+      // 操作建议
       let suggestion = '持有观望';
       if (pe > 0 && pe < 20 && changePercent > 0) suggestion = '可考虑买入';
       if (pe > 60 && changePercent > 5) suggestion = '注意风险，可考虑减仓';
       if (changePercent < -5 && pe > 0 && pe < 30) suggestion = '可逢低布局';
       
+      // 支撑位/压力位计算
+      const support = preClose * 0.97; // -3% 作为支撑
+      const resist = preClose * 1.03;  // +3% 作为压力
+      
+      // 推荐买入价（支撑位附近）
+      const buyPrice = support * 0.99;
+      
+      // 目标价（压力位上方）
+      const targetPrice = resist * 1.05;
+      
+      // 止损价（买入价下方 5%）
+      const stopLoss = buyPrice * 0.95;
+      
+      // 亮点
+      const highlights = [];
+      if (pe > 0 && pe < 20) highlights.push('估值处于较低水平');
+      if (changePercent > 3) highlights.push('今日表现强势');
+      if (pb > 0 && pb < 3) highlights.push('市净率较低，安全边际高');
+      if (highlights.length === 0) highlights.push('暂无特别亮点');
+      
+      // 风险
+      const risks = [];
+      if (pe > 50) risks.push('估值偏高，存在回调风险');
+      if (pe > 80) risks.push('估值过高，需谨慎');
+      if (pb > 10) risks.push('市净率较高');
+      if (changePercent > 5) risks.push('短期涨幅较大，注意获利回吐');
+      if (changePercent < -5) risks.push('短期跌幅较大，注意继续下行风险');
+      if (risks.length === 0) risks.push('暂无重大风险');
+      
       return {
-        valuation,
-        trend,
-        suggestion,
-        score: calculateScore(data),
-        risks: generateRisks(data),
-        highlights: generateHighlights(data)
+        valuation, trend, suggestion, highlights, risks,
+        support: support.toFixed(2),
+        resist: resist.toFixed(2),
+        buyPrice: buyPrice.toFixed(2),
+        targetPrice: targetPrice.toFixed(2),
+        stopLoss: stopLoss.toFixed(2)
       };
     }
     
-    function calculateScore(data) {
-      let score = 50;
-      if (data.pe > 0 && data.pe < 20) score += 20;
-      else if (data.pe > 0 && data.pe < 40) score += 10;
-      else if (data.pe > 60) score -= 15;
-      else if (data.pe > 80) score -= 25;
-      
-      if (data.changePercent > 3) score += 15;
-      else if (data.changePercent > 1) score += 5;
-      else if (data.changePercent < -3) score -= 15;
-      else if (data.changePercent < -1) score -= 5;
-      
-      if (data.pb > 0 && data.pb < 2) score += 10;
-      else if (data.pb > 0 && data.pb < 4) score += 5;
-      else if (data.pb > 10) score -= 10;
-      
-      return Math.max(0, Math.min(100, score));
-    }
-    
-    function generateRisks(data) {
-      const risks = [];
-      if (data.pe > 50) risks.push('估值偏高，存在回调风险');
-      if (data.pe > 80) risks.push('估值过高，需谨慎');
-      if (data.pb > 10) risks.push('市净率较高');
-      if (data.changePercent > 5) risks.push('短期涨幅较大，注意获利回吐');
-      if (data.changePercent < -5) risks.push('短期跌幅较大，注意继续下行风险');
-      if (risks.length === 0) risks.push('暂无重大风险');
-      return risks;
-    }
-    
-    function generateHighlights(data) {
-      const highlights = [];
-      if (data.pe > 0 && data.pe < 20) highlights.push('估值处于较低水平');
-      if (data.changePercent > 3) highlights.push('今日表现强势');
-      if (data.pb > 0 && data.pb < 3) highlights.push('市净率较低，安全边际高');
-      if (data.dividendYield > 2) highlights.push(`股息率${data.dividendYield.toFixed(2)}%，分红可观`);
-      if (highlights.length === 0) highlights.push('暂无特别亮点');
-      return highlights;
-    }
-    
     function displayResult(data) {
-      document.getElementById('stockName').textContent = data.name || '--';
+      document.getElementById('stockName').textContent = data.name;
       document.getElementById('stockCodeDisplay').textContent = data.code;
-      
       const priceEl = document.getElementById('stockPrice');
       const changeEl = document.getElementById('stockChange');
-      
-      priceEl.textContent = data.price ? `${data.price.toFixed(2)}元` : '--';
+      priceEl.textContent = data.price.toFixed(2) + '元';
       priceEl.className = 'price' + (data.change >= 0 ? '' : ' down');
-      
-      const changeSign = data.change >= 0 ? '+' : '';
-      changeEl.textContent = `${changeSign}${data.change?.toFixed(2)} (${changeSign}${data.changePercent?.toFixed(2)}%)`;
+      const sign = data.change >= 0 ? '+' : '';
+      changeEl.textContent = `${sign}${data.change.toFixed(2)} (${sign}${data.changePercent.toFixed(2)}%)`;
       changeEl.className = 'change' + (data.change >= 0 ? ' up' : ' down');
-      
       document.getElementById('peValue').textContent = data.pe ? data.pe.toFixed(2) : '--';
       document.getElementById('pbValue').textContent = data.pb ? data.pb.toFixed(2) : '--';
-      document.getElementById('marketCap').textContent = formatNumber(data.totalMarketCap);
-      document.getElementById('changePercent').textContent = data.changePercent ? `${data.changePercent >= 0 ? '+' : ''}${data.changePercent.toFixed(2)}%` : '--';
-      document.getElementById('changePercent').style.color = data.changePercent >= 0 ? '#00ff88' : '#ff4757';
+      document.getElementById('marketCap').textContent = formatNum(data.marketCap);
+      document.getElementById('changePercent').textContent = `${sign}${data.changePercent.toFixed(2)}%`;
+      document.getElementById('changePercent').style.color = data.change >= 0 ? '#ff4757' : '#00ff88';
       
-      if (data.analysis) {
-        document.getElementById('scoreValue').textContent = data.analysis.score;
-        
-        const valuationTag = document.getElementById('valuationTag');
-        valuationTag.textContent = `估值：${data.analysis.valuation}`;
-        valuationTag.className = 'tag ' + getTagClass(data.analysis.valuation);
-        
-        const trendTag = document.getElementById('trendTag');
-        trendTag.textContent = `趋势：${data.analysis.trend}`;
-        trendTag.className = 'tag ' + getTagClass(data.analysis.trend);
-        
-        document.getElementById('suggestionText').textContent = data.analysis.suggestion;
-        
-        const highlightsHtml = data.analysis.highlights
-          .map(h => `<div class="list-item">✨ ${h}</div>`)
-          .join('');
-        document.getElementById('highlightsList').innerHTML = highlightsHtml;
-        
-        const risksHtml = data.analysis.risks
-          .map(r => `<div class="list-item">⚠️ ${r}</div>`)
-          .join('');
-        document.getElementById('risksList').innerHTML = risksHtml;
-      }
+      const analysis = generateAnalysis(data);
+      document.getElementById('valuationTag').textContent = `估值：${analysis.valuation}`;
+      document.getElementById('valuationTag').className = 'tag ' + (analysis.valuation.includes('低') ? 'good' : analysis.valuation.includes('高') ? 'bad' : 'warn');
+      document.getElementById('trendTag').textContent = `趋势：${analysis.trend}`;
+      document.getElementById('trendTag').className = 'tag ' + (analysis.trend.includes('涨') ? 'good' : analysis.trend.includes('跌') ? 'bad' : 'warn');
+      document.getElementById('suggestionText').textContent = analysis.suggestion;
+      document.getElementById('buyPrice').textContent = analysis.buyPrice + '元';
+      document.getElementById('supportPrice').textContent = analysis.support + '元';
+      document.getElementById('resistPrice').textContent = analysis.resist + '元';
+      document.getElementById('targetPrice').textContent = analysis.targetPrice + '元';
+      document.getElementById('stopLossPrice').textContent = analysis.stopLoss + '元';
+      document.getElementById('highlightsList').innerHTML = analysis.highlights.map(h => `<div class="list-item">✨ ${h}</div>`).join('');
+      document.getElementById('risksList').innerHTML = analysis.risks.map(r => `<div class="list-item">⚠️ ${r}</div>`).join('');
       
       document.getElementById('result').style.display = 'block';
-    }
-    
-    function getTagClass(text) {
-      if (text.includes('低') || text.includes('强势') || text.includes('上涨')) return 'good';
-      if (text.includes('高') || text.includes('下跌') || text.includes('风险')) return 'bad';
-      return 'warn';
-    }
-    
-    function showError(message) {
-      document.getElementById('error').textContent = message;
-      document.getElementById('error').style.display = 'block';
-    }
-    
-    function formatNumber(num) {
-      if (!num) return '--';
-      if (num >= 1e12) return (num / 1e12).toFixed(2) + '万亿';
-      if (num >= 1e8) return (num / 1e8).toFixed(2) + '亿';
-      if (num >= 1e4) return (num / 1e4).toFixed(2) + '万';
-      return num.toFixed(2);
     }
   </script>
 </body>

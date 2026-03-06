@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const path = require('path');
+const iconv = require('iconv-lite'); // 添加编码转换库
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,7 +14,7 @@ app.use(express.static(path.join(__dirname, '../frontend')));
 // 股票数据缓存
 const stockCache = new Map();
 
-// 获取股票实时数据 - 使用新浪财经 API
+// 获取股票实时数据 - 支持 A 股和港股
 async function fetchStockData(code) {
   const cacheKey = code.toUpperCase();
   const cached = stockCache.get(cacheKey);
@@ -24,18 +25,28 @@ async function fetchStockData(code) {
   }
 
   try {
-    // 确定市场前缀
-    let market = 'sz';
-    if (code.startsWith('6')) market = 'sh';
-    else if (code.startsWith('4') || code.startsWith('8')) market = 'bj';
+    // 判断市场类型
+    let market, symbol;
+    const codeNum = parseInt(code);
     
-    const symbol = `${market}${code}`;
+    // 港股：5位数字，通常是 00001-09999 或 5位
+    if (code.length === 5 || (code.length === 4 && codeNum >= 1 && codeNum <= 9999)) {
+      market = 'hk';
+      symbol = `hk${code}`;
+    } else {
+      // A股
+      if (code.startsWith('6')) market = 'sh';
+      else if (code.startsWith('4') || code.startsWith('8')) market = 'bj';
+      else market = 'sz';
+      symbol = `${market}${code}`;
+    }
     
     // 使用新浪财经 API
     const response = await axios.get(
       `http://hq.sinajs.cn/list=${symbol}`,
       {
         timeout: 10000,
+        responseType: 'arraybuffer', // 获取二进制数据
         headers: {
           'Referer': 'https://finance.sina.com.cn/',
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -43,32 +54,63 @@ async function fetchStockData(code) {
       }
     );
     
-    const data = response.data;
+    // 转换编码（新浪财经返回 GBK）
+    const data = iconv.decode(response.data, 'gbk');
     if (data && data.includes('=')) {
       const parts = data.split('=')[1].replace(/"/g, '').split(',');
       
-      if (parts.length >= 32) {
-        const stockData = {
-          code: code,
-          name: parts[0],
-          open: parseFloat(parts[1]),
-          preClose: parseFloat(parts[2]),
-          price: parseFloat(parts[3]),
-          high: parseFloat(parts[4]),
-          low: parseFloat(parts[5]),
-          volume: parseFloat(parts[8]),
-          amount: parseFloat(parts[9]),
-          change: parseFloat(parts[3]) - parseFloat(parts[2]),
-          changePercent: ((parseFloat(parts[3]) - parseFloat(parts[2])) / parseFloat(parts[2]) * 100),
-          update: new Date().toISOString()
-        };
-        
-        // 获取额外数据（市盈率等）
-        const extraData = await fetchExtraData(code, market);
-        Object.assign(stockData, extraData);
-        
-        stockCache.set(cacheKey, { data: stockData, timestamp: Date.now() });
-        return stockData;
+      // 港股数据格式不同
+      if (market === 'hk') {
+        if (parts.length >= 6) {
+          const stockData = {
+            code: code,
+            name: parts[1],
+            open: parseFloat(parts[2]),
+            high: parseFloat(parts[4]),
+            low: parseFloat(parts[5]),
+            price: parseFloat(parts[6]),
+            preClose: parseFloat(parts[3]),
+            change: parseFloat(parts[6]) - parseFloat(parts[3]),
+            changePercent: ((parseFloat(parts[6]) - parseFloat(parts[3])) / parseFloat(parts[3]) * 100),
+            volume: parseFloat(parts[12]) || 0,
+            amount: parseFloat(parts[11]) || 0,
+            market: '港股',
+            update: new Date().toISOString()
+          };
+          
+          // 获取港股额外数据
+          const extraData = await fetchHKExtraData(code);
+          Object.assign(stockData, extraData);
+          
+          stockCache.set(cacheKey, { data: stockData, timestamp: Date.now() });
+          return stockData;
+        }
+      } else {
+        // A股数据格式
+        if (parts.length >= 32) {
+          const stockData = {
+            code: code,
+            name: parts[0],
+            open: parseFloat(parts[1]),
+            preClose: parseFloat(parts[2]),
+            price: parseFloat(parts[3]),
+            high: parseFloat(parts[4]),
+            low: parseFloat(parts[5]),
+            volume: parseFloat(parts[8]),
+            amount: parseFloat(parts[9]),
+            change: parseFloat(parts[3]) - parseFloat(parts[2]),
+            changePercent: ((parseFloat(parts[3]) - parseFloat(parts[2])) / parseFloat(parts[2]) * 100),
+            market: market === 'sh' ? '沪市' : (market === 'sz' ? '深市' : '北交所'),
+            update: new Date().toISOString()
+          };
+          
+          // 获取A股额外数据
+          const extraData = await fetchExtraData(code, market);
+          Object.assign(stockData, extraData);
+          
+          stockCache.set(cacheKey, { data: stockData, timestamp: Date.now() });
+          return stockData;
+        }
       }
     }
   } catch (error) {
@@ -78,7 +120,45 @@ async function fetchStockData(code) {
   return null;
 }
 
-// 获取额外财务数据
+// 获取港股额外数据
+async function fetchHKExtraData(code) {
+  try {
+    // 港股数据获取（使用腾讯财经 API 作为补充）
+    const response = await axios.get(
+      `http://qt.gtimg.cn/q=hk${code}`,
+      { 
+        timeout: 5000,
+        responseType: 'arraybuffer'
+      }
+    );
+    
+    const data = iconv.decode(response.data, 'gbk');
+    if (data && data.includes('=')) {
+      const parts = data.split('=')[1].replace(/"/g, '').split('~');
+      if (parts.length >= 45) {
+        return {
+          pe: parseFloat(parts[52]) || 0,  // 市盈率
+          pb: parseFloat(parts[53]) || 0,  // 市净率
+          totalMarketCap: parseFloat(parts[44]) || 0,  // 总市值
+          eps: parseFloat(parts[55]) || 0,  // 每股收益
+          dividendYield: parseFloat(parts[62]) || 0,  // 股息率
+          fiftyTwoWeekHigh: parseFloat(parts[33]) || 0,  // 52周最高
+          fiftyTwoWeekLow: parseFloat(parts[34]) || 0,  // 52周最低
+          volumeRatio: parseFloat(parts[57]) || 0  // 换手率
+        };
+      }
+    }
+  } catch (e) {
+    console.error('港股额外数据获取失败:', e.message);
+  }
+  
+  return {
+    pe: 0, pb: 0, totalMarketCap: 0, eps: 0, dividendYield: 0,
+    fiftyTwoWeekHigh: 0, fiftyTwoWeekLow: 0, volumeRatio: 0
+  };
+}
+
+// 获取A股额外财务数据
 async function fetchExtraData(code, market) {
   try {
     const response = await axios.get(
@@ -127,14 +207,24 @@ async function fetchStockAnalysis(code) {
 }
 
 function generateAnalysis(data) {
-  const { pe, pb, changePercent, price } = data;
+  const { pe, pb, changePercent, price, market } = data;
+  const isHK = market === '港股';
   
-  // 估值判断
+  // 估值判断（港股和A股标准不同）
   let valuation = '合理';
-  if (pe > 50) valuation = '偏高';
-  if (pe > 80) valuation = '高估';
-  if (pe > 0 && pe < 20) valuation = '偏低';
-  if (pe > 0 && pe < 10) valuation = '低估';
+  if (isHK) {
+    // 港股估值通常较低
+    if (pe > 30) valuation = '偏高';
+    if (pe > 50) valuation = '高估';
+    if (pe > 0 && pe < 10) valuation = '偏低';
+    if (pe > 0 && pe < 5) valuation = '低估';
+  } else {
+    // A股标准
+    if (pe > 50) valuation = '偏高';
+    if (pe > 80) valuation = '高估';
+    if (pe > 0 && pe < 20) valuation = '偏低';
+    if (pe > 0 && pe < 10) valuation = '低估';
+  }
 
   // 趋势判断
   let trend = '震荡';
@@ -145,8 +235,13 @@ function generateAnalysis(data) {
 
   // 操作建议
   let suggestion = '持有观望';
-  if (pe > 0 && pe < 20 && changePercent > 0) suggestion = '可考虑买入';
-  if (pe > 60 && changePercent > 5) suggestion = '注意风险，可考虑减仓';
+  if (isHK) {
+    if (pe > 0 && pe < 10 && changePercent > 0) suggestion = '可考虑买入';
+    if (pe > 40 && changePercent > 5) suggestion = '注意风险，可考虑减仓';
+  } else {
+    if (pe > 0 && pe < 20 && changePercent > 0) suggestion = '可考虑买入';
+    if (pe > 60 && changePercent > 5) suggestion = '注意风险，可考虑减仓';
+  }
   if (changePercent < -5 && pe > 0 && pe < 30) suggestion = '可逢低布局';
 
   return {
@@ -155,7 +250,8 @@ function generateAnalysis(data) {
     suggestion,
     score: calculateScore(data),
     risks: generateRisks(data),
-    highlights: generateHighlights(data)
+    highlights: generateHighlights(data),
+    market: isHK ? '港股' : 'A股'
   };
 }
 
