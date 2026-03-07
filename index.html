@@ -463,12 +463,15 @@
         if (symbol.startsWith('hk')) {
           // 港股数据格式 (腾讯API) - 与A股不同！
           // parts[3]=现价, [4]=昨收, [5]=今开, [33]=最高, [34]=最低
-          // [36]=成交量, [37]=成交额, [44]=总市值, [48]=52周高, [49]=52周低, [62]=股息率
+          // [36]=成交量, [37]=成交额, [44]=总市值(亿), [48]=52周高, [49]=52周低, [62]=股息率
           // 港股PE/PB可能为0或不提供，换手率需要计算
-          const volume = parseFloat(parts[36]) || 0;
-          const marketCap = parseFloat(parts[44]) || 0;
-          // 换手率 = 成交量 / 总股本，这里用成交额/总市值估算
-          const turnover = marketCap > 0 ? (volume / marketCap * 100) : 0;
+          const volume = parseFloat(parts[36]) || 0;  // 成交量
+          const marketCap = parseFloat(parts[44]) || 0;  // 总市值(亿)
+          const price = parseFloat(parts[3]) || 0;  // 现价
+          // 估算总股本 = 总市值(亿) / 股价 = 总股本(亿股)
+          // 换手率 = 成交量(股) / 总股本(股) × 100%
+          const totalShares = price > 0 ? (marketCap / price) : 0;  // 总股本(亿股)
+          const turnover = totalShares > 0 ? (volume / (totalShares * 100000000) * 100) : 0;
           return {
             code: code,
             name: parts[1],
@@ -695,7 +698,7 @@
         document.getElementById('pe').textContent = data.pe > 0 ? data.pe.toFixed(2) : '--';
         document.getElementById('pb').textContent = data.pb > 0 ? data.pb.toFixed(2) : '--';
         document.getElementById('marketCap').textContent = data.marketCap > 0 ? 
-          (data.marketCap / 10000).toFixed(2) + '亿' : '--';
+          (data.isHK ? data.marketCap.toFixed(2) : (data.marketCap / 10000).toFixed(2)) + '亿' : '--';
         document.getElementById('week52High').textContent = data.week52High > 0 ? data.week52High.toFixed(2) : '--';
         document.getElementById('week52Low').textContent = data.week52Low > 0 ? data.week52Low.toFixed(2) : '--';
         document.getElementById('dividend').textContent = data.dividend > 0 ? data.dividend.toFixed(2) + '%' : '--';
