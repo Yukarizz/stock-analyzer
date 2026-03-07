@@ -461,9 +461,14 @@
         const parts = data.split('=')[1].replace(/"/g, '').split('~');
         
         if (symbol.startsWith('hk')) {
-          // 港股数据格式 (腾讯API)
+          // 港股数据格式 (腾讯API) - 与A股不同！
           // parts[3]=现价, [4]=昨收, [5]=今开, [33]=最高, [34]=最低
-          // [36]=成交额(万), [37]=换手率, [44]=总市值(亿), [52]=PE, [53]=PB
+          // [36]=成交量, [37]=成交额, [44]=总市值, [48]=52周高, [49]=52周低, [62]=股息率
+          // 港股PE/PB可能为0或不提供，换手率需要计算
+          const volume = parseFloat(parts[36]) || 0;
+          const marketCap = parseFloat(parts[44]) || 0;
+          // 换手率 = 成交量 / 总股本，这里用成交额/总市值估算
+          const turnover = marketCap > 0 ? (volume / marketCap * 100) : 0;
           return {
             code: code,
             name: parts[1],
@@ -472,15 +477,15 @@
             open: parseFloat(parts[5]) || 0,
             high: parseFloat(parts[33]) || 0,
             low: parseFloat(parts[34]) || 0,
-            volume: parseFloat(parts[36]) || 0,  // 成交额(万)
-            turnover: parseFloat(parts[38]) || 0,  // 换手率(%)，腾讯API直接返回百分比在parts[38]
+            volume: volume,  // 成交量
+            turnover: turnover,  // 估算换手率(%)
             change: (parseFloat(parts[3]) || 0) - (parseFloat(parts[4]) || 0),
             changePercent: ((parseFloat(parts[3]) || 0) - (parseFloat(parts[4]) || 0)) / (parseFloat(parts[4]) || 1) * 100,
-            pe: parseFloat(parts[52]) || 0,
-            pb: parseFloat(parts[53]) || 0,
-            marketCap: parseFloat(parts[44]) || 0,  // 总市值(亿)
-            week52High: parseFloat(parts[47]) || 0,  // 52周最高 (parts[47])
-            week52Low: parseFloat(parts[48]) || 0,   // 52周最低 (parts[48])
+            pe: 0,  // 港股PE可能不提供
+            pb: 0,  // 港股PB可能不提供
+            marketCap: marketCap,  // 总市值
+            week52High: parseFloat(parts[48]) || 0,  // 52周最高 (parts[48])
+            week52Low: parseFloat(parts[49]) || 0,   // 52周最低 (parts[49])
             dividend: parseFloat(parts[62]) || 0,
             isHK: true
           };
