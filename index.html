@@ -273,6 +273,7 @@
       <div class="input-group">
         <input type="text" id="stockCode" placeholder="输入股票代码，如：300308、600519 或港股 00700、09988" />
         <button onclick="analyzeStock()">分析</button>
+        <button onclick="loadHotNews()" style="background: linear-gradient(90deg, #ff6b6b, #ffa502);">🔥 热点推荐</button>
       </div>
     </div>
 
@@ -428,6 +429,30 @@
         <ul class="risk-list" id="risks">
           <li>暂无重大风险</li>
         </ul>
+      </div>
+    </div>
+
+    <!-- 热点推荐区域 -->
+    <div class="result" id="hotNewsResult" style="display: none;">
+      <div class="analysis-section">
+        <h3>🔥 今日热点板块</h3>
+        <div id="hotSectors" style="margin-bottom: 20px;">
+          <p style="color: #8892b0;">加载中...</p>
+        </div>
+      </div>
+      
+      <div class="analysis-section">
+        <h3>📈 高分股票推荐 (70分以上)</h3>
+        <div id="recommendedStocks">
+          <p style="color: #8892b0;">请先点击"热点推荐"按钮</p>
+        </div>
+      </div>
+      
+      <div class="analysis-section">
+        <h3>📰 相关新闻</h3>
+        <div id="newsList">
+          <p style="color: #8892b0;">暂无新闻</p>
+        </div>
       </div>
     </div>
   </div>
@@ -759,6 +784,169 @@
         analyzeStock();
       }
     });
+
+    // ==================== 热点推荐功能 ====================
+    
+    // 加载热点新闻和推荐股票
+    async function loadHotNews() {
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('result').style.display = 'none';
+      document.getElementById('hotNewsResult').style.display = 'none';
+      document.getElementById('error').style.display = 'none';
+      
+      try {
+        // 加载新闻数据
+        const response = await fetch('data/news.json?t=' + Date.now());
+        const newsData = await response.json();
+        
+        // 显示热点板块
+        displayHotSectors(newsData.hotSectors);
+        
+        // 显示相关新闻
+        displayNews(newsData.news);
+        
+        // 分析推荐股票
+        await analyzeRecommendedStocks(newsData.hotSectors);
+        
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('hotNewsResult').style.display = 'block';
+        
+      } catch (error) {
+        console.error('加载热点新闻失败:', error);
+        showError('加载热点新闻失败，请稍后重试');
+        document.getElementById('loading').style.display = 'none';
+      }
+    }
+    
+    // 显示热点板块
+    function displayHotSectors(sectors) {
+      const container = document.getElementById('hotSectors');
+      if (!sectors || sectors.length === 0) {
+        container.innerHTML = '<p style="color: #8892b0;">暂无热点板块数据</p>';
+        return;
+      }
+      
+      let html = '<div style="display: flex; flex-wrap: wrap; gap: 10px;">';
+      sectors.forEach((sector, index) => {
+        const colors = ['#ff6b6b', '#ffa502', '#00d9ff', '#00ff88', '#6464ff'];
+        const color = colors[index % colors.length];
+        html += `
+          <div style="background: ${color}20; border: 1px solid ${color}; border-radius: 20px; padding: 10px 20px; cursor: pointer;" 
+               onclick="analyzeSectorStock('${sector.name}', ${JSON.stringify(sector.stocks).replace(/"/g, '&quot;')})">
+            <span style="color: ${color}; font-weight: bold;">${sector.name}</span>
+            <span style="color: #8892b0; font-size: 0.9em;">(${sector.count}条)</span>
+          </div>
+        `;
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    }
+    
+    // 显示新闻
+    function displayNews(news) {
+      const container = document.getElementById('newsList');
+      if (!news || news.length === 0) {
+        container.innerHTML = '<p style="color: #8892b0;">暂无相关新闻</p>';
+        return;
+      }
+      
+      let html = '<div style="max-height: 400px; overflow-y: auto;">';
+      news.slice(0, 10).forEach(item => {
+        const sectors = item.sectors ? item.sectors.join('、') : '';
+        html += `
+          <div style="padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <div style="color: #fff; margin-bottom: 5px;">${item.title}</div>
+            <div style="color: #8892b0; font-size: 0.85em;">
+              <span>${item.source}</span>
+              ${sectors ? `<span style="color: #00d9ff; margin-left: 10px;">[${sectors}]</span>` : ''}
+            </div>
+          </div>
+        `;
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    }
+    
+    // 分析推荐股票
+    async function analyzeRecommendedStocks(hotSectors) {
+      const container = document.getElementById('recommendedStocks');
+      container.innerHTML = '<p style="color: #8892b0;">正在分析股票...</p>';
+      
+      const recommended = [];
+      
+      // 取前3个热点板块的股票
+      for (const sector of hotSectors.slice(0, 3)) {
+        if (!sector.stocks || sector.stocks.length === 0) continue;
+        
+        // 每个板块分析前3只股票
+        for (const code of sector.stocks.slice(0, 3)) {
+          try {
+            const data = await fetchStockData(code);
+            if (data) {
+              const analysis = analyzeData(data);
+              if (analysis.score >= 70) {
+                recommended.push({
+                  ...data,
+                  analysis,
+                  sector: sector.name
+                });
+              }
+            }
+          } catch (e) {
+            console.error(`分析股票 ${code} 失败:`, e);
+          }
+        }
+      }
+      
+      // 按评分排序
+      recommended.sort((a, b) => b.analysis.score - a.analysis.score);
+      
+      // 显示结果
+      if (recommended.length === 0) {
+        container.innerHTML = '<p style="color: #8892b0;">暂无70分以上的推荐股票</p>';
+        return;
+      }
+      
+      let html = '<div style="display: grid; gap: 15px;">';
+      recommended.slice(0, 6).forEach(stock => {
+        const scoreColor = stock.analysis.score >= 80 ? '#00ff88' : 
+                          stock.analysis.score >= 70 ? '#ffa502' : '#ff6b6b';
+        html += `
+          <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; cursor: pointer;"
+               onclick="showStockDetail('${stock.code}')">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-weight: bold; color: #fff;">${stock.name} <span style="color: #8892b0;">${stock.code}</span></div>
+                <div style="color: #00d9ff; font-size: 0.9em; margin-top: 5px;">${stock.sector}</div>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 1.5em; font-weight: bold; color: ${scoreColor};">${stock.analysis.score}分</div>
+                <div style="color: ${stock.change >= 0 ? '#ff6b6b' : '#00ff88'};">
+                  ¥${stock.price.toFixed(2)} ${stock.change >= 0 ? '+' : ''}${stock.changePercent.toFixed(2)}%
+                </div>
+              </div>
+            </div>
+            <div style="margin-top: 10px; color: #8892b0; font-size: 0.85em;">
+              ${stock.analysis.suggestion} | PE: ${stock.pe > 0 ? stock.pe.toFixed(2) : '--'} | PB: ${stock.pb > 0 ? stock.pb.toFixed(2) : '--'}
+            </div>
+          </div>
+        `;
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    }
+    
+    // 分析板块股票（点击板块时调用）
+    async function analyzeSectorStock(sectorName, stocks) {
+      document.getElementById('stockCode').value = stocks[0];
+      analyzeStock();
+    }
+    
+    // 显示股票详情
+    function showStockDetail(code) {
+      document.getElementById('stockCode').value = code;
+      analyzeStock();
+    }
   </script>
 </body>
 </html>

@@ -1,0 +1,175 @@
+name: Fetch Hot News
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'  # 每2小时运行一次
+  workflow_dispatch:  # 支持手动触发
+
+jobs:
+  fetch-news:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Fetch news from multiple sources
+      run: |
+        cat > fetch-news.js << 'EOF'
+        const https = require('https');
+        const fs = require('fs');
+        
+        // 板块关键词配置
+        const sectors = {
+          '新能源': ['新能源', '锂电池', '光伏', '储能', '风电', '氢能源', '宁德时代', '比亚迪'],
+          '半导体': ['半导体', '芯片', '集成电路', '光刻机', '中芯国际', '台积电'],
+          'AI人工智能': ['人工智能', 'AI', 'ChatGPT', '大模型', '算力', '科大讯飞', '百度'],
+          '医药医疗': ['医药', '医疗', '创新药', '医疗器械', 'CXO', '疫苗', '恒瑞医药'],
+          '新能源汽车': ['新能源汽车', '电动车', '特斯拉', '蔚来', '小鹏', '理想'],
+          '金融': ['银行', '保险', '证券', '券商', '金融科技'],
+          '消费': ['消费', '白酒', '食品饮料', '家电', '免税', '贵州茅台'],
+          '房地产': ['房地产', '地产', '房企', '楼市', '万科', '保利'],
+          '军工': ['军工', '国防', '航空航天', '船舶'],
+          '有色': ['有色', '稀土', '锂矿', '铜', '铝', '黄金']
+        };
+        
+        // 板块股票池
+        const sectorStocks = {
+          '新能源': ['300750', '002594', '601012', '300274', '002459'],
+          '半导体': ['688981', '002371', '603501', '600584', '300661'],
+          'AI人工智能': ['002230', '000938', '300418', '603019', '000977'],
+          '医药医疗': ['600276', '000538', '300760', '603259', '600436'],
+          '新能源汽车': ['002594', '601127', '000625', '601633', '300750'],
+          '金融': ['600036', '601318', '600030', '601688', '300059'],
+          '消费': ['600519', '000858', '000568', '600887', '002304'],
+          '房地产': ['000002', '600048', '001979', '600606', '000656'],
+          '军工': ['600893', '000768', '600372', '600760', '300034'],
+          '有色': ['002460', '600111', '601899', '600547', '603993']
+        };
+        
+        // RSS 源
+        const rssSources = [
+          { name: '新浪财经', url: 'https://rss.sina.com.cn/finance/stock/market.xml' },
+          { name: '东方财富', url: 'https://rss.eastmoney.com/stock/market.xml' }
+        ];
+        
+        function fetchRSS(url) {
+          return new Promise((resolve, reject) => {
+            https.get(url, (res) => {
+              let data = '';
+              res.on('data', chunk => data += chunk);
+              res.on('end', () => resolve(data));
+            }).on('error', reject);
+          });
+        }
+        
+        function parseRSS(xml) {
+          const items = [];
+          const itemRegex = /<item>[\s\S]*?<\/item>/g;
+          const titleRegex = /<title><!\[CDATA\[(.*?)\]\]><\/title>/;
+          const descRegex = /<description><!\[CDATA\[(.*?)\]\]><\/description>/;
+          const dateRegex = /<pubDate>(.*?)<\/pubDate>/;
+          
+          let match;
+          while ((match = itemRegex.exec(xml)) !== null) {
+            const item = match[0];
+            const title = (titleRegex.exec(item) || [])[1] || '';
+            const desc = (descRegex.exec(item) || [])[1] || '';
+            const date = (dateRegex.exec(item) || [])[1] || '';
+            
+            if (title) {
+              items.push({
+                title: title.replace(/<[^>]+>/g, ''),
+                description: desc.replace(/<[^>]+>/g, ''),
+                pubDate: date,
+                content: title + ' ' + desc
+              });
+            }
+          }
+          return items;
+        }
+        
+        function identifySectors(content) {
+          const hotSectors = [];
+          for (const [sector, keywords] of Object.entries(sectors)) {
+            for (const keyword of keywords) {
+              if (content.includes(keyword)) {
+                hotSectors.push(sector);
+                break;
+              }
+            }
+          }
+          return [...new Set(hotSectors)];
+        }
+        
+        async function main() {
+          const allNews = [];
+          
+          for (const source of rssSources) {
+            try {
+              console.log(`Fetching ${source.name}...`);
+              const xml = await fetchRSS(source.url);
+              const items = parseRSS(xml);
+              
+              for (const item of items.slice(0, 10)) {  // 每个源取前10条
+                const hotSectors = identifySectors(item.content);
+                if (hotSectors.length > 0) {
+                  allNews.push({
+                    ...item,
+                    source: source.name,
+                    sectors: hotSectors
+                  });
+                }
+              }
+            } catch (err) {
+              console.error(`Failed to fetch ${source.name}:`, err.message);
+            }
+          }
+          
+          // 统计热点板块
+          const sectorCount = {};
+          for (const news of allNews) {
+            for (const sector of news.sectors) {
+              sectorCount[sector] = (sectorCount[sector] || 0) + 1;
+            }
+          }
+          
+          // 排序热点板块
+          const hotSectors = Object.entries(sectorCount)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([name, count]) => ({
+              name,
+              count,
+              stocks: sectorStocks[name] || []
+            }));
+          
+          const result = {
+            updateTime: new Date().toISOString(),
+            hotSectors,
+            news: allNews.slice(0, 20)  // 保存前20条相关新闻
+          };
+          
+          fs.writeFileSync('data/news.json', JSON.stringify(result, null, 2));
+          console.log('News saved to data/news.json');
+          console.log('Hot sectors:', hotSectors.map(s => s.name).join(', '));
+        }
+        
+        main().catch(console.error);
+        EOF
+        
+        mkdir -p data
+        node fetch-news.js
+        
+    - name: Commit and push
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add data/news.json
+        git diff --quiet && git diff --staged --quiet || git commit -m "Update news data"
+        git push
