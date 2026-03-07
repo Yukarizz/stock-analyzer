@@ -274,6 +274,7 @@
         <input type="text" id="stockCode" placeholder="输入股票代码，如：300308、600519 或港股 00700、09988" />
         <button onclick="analyzeStock()">分析</button>
         <button onclick="loadHotNews()" style="background: linear-gradient(90deg, #ff6b6b, #ffa502);">🔥 热点推荐</button>
+        <button onclick="showHoldings()" style="background: linear-gradient(90deg, #00d9ff, #6464ff);">💼 持仓</button>
       </div>
     </div>
 
@@ -452,6 +453,29 @@
         <h3>📰 相关新闻</h3>
         <div id="newsList">
           <p style="color: #8892b0;">暂无新闻</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 持仓管理区域 -->
+    <div class="result" id="holdingsResult" style="display: none;">
+      <div class="analysis-section">
+        <h3>💼 批量导入持仓</h3>
+        <div style="margin-bottom: 15px;">
+          <textarea id="holdingsInput" placeholder="输入股票代码，每行一个，如：&#10;300308&#10;600519&#10;00700" 
+                    style="width: 100%; min-height: 100px; padding: 15px; border-radius: 12px; background: rgba(255,255,255,0.05); color: #fff; border: 2px solid rgba(255,255,255,0.2); resize: vertical;"></textarea>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button onclick="importHoldings()" style="background: linear-gradient(90deg, #00d9ff, #00ff88);">导入持仓</button>
+          <button onclick="clearHoldings()" style="background: linear-gradient(90deg, #ff6b6b, #ff8e8e);">清空持仓</button>
+          <button onclick="refreshHoldings()" style="background: rgba(255,255,255,0.1);">🔄 刷新</button>
+        </div>
+      </div>
+      
+      <div class="analysis-section">
+        <h3>📊 我的持仓</h3>
+        <div id="holdingsList">
+          <p style="color: #8892b0;">暂无持仓，请先导入股票</p>
         </div>
       </div>
     </div>
@@ -945,6 +969,174 @@
     // 显示股票详情
     function showStockDetail(code) {
       document.getElementById('stockCode').value = code;
+      analyzeStock();
+    }
+
+    // ==================== 持仓管理功能 ====================
+    
+    // 从 localStorage 读取持仓
+    function getHoldings() {
+      return JSON.parse(localStorage.getItem('stockHoldings') || '[]');
+    }
+    
+    // 保存持仓到 localStorage
+    function saveHoldings(holdings) {
+      localStorage.setItem('stockHoldings', JSON.stringify(holdings));
+    }
+    
+    // 显示持仓管理页面
+    function showHoldings() {
+      document.getElementById('result').style.display = 'none';
+      document.getElementById('hotNewsResult').style.display = 'none';
+      document.getElementById('holdingsResult').style.display = 'block';
+      document.getElementById('error').style.display = 'none';
+      
+      // 加载持仓列表
+      loadHoldingsList();
+    }
+    
+    // 导入持仓
+    function importHoldings() {
+      const input = document.getElementById('holdingsInput').value.trim();
+      if (!input) {
+        alert('请输入股票代码');
+        return;
+      }
+      
+      // 解析输入（支持逗号、空格、换行分隔）
+      const codes = input.split(/[,\s\n]+/).map(s => s.trim()).filter(s => /^\d{5,6}$/.test(s));
+      
+      if (codes.length === 0) {
+        alert('未找到有效的股票代码');
+        return;
+      }
+      
+      // 获取现有持仓
+      let holdings = getHoldings();
+      
+      // 添加新持仓（去重）
+      let added = 0;
+      for (const code of codes) {
+        if (!holdings.includes(code)) {
+          holdings.push(code);
+          added++;
+        }
+      }
+      
+      // 保存
+      saveHoldings(holdings);
+      
+      // 清空输入框
+      document.getElementById('holdingsInput').value = '';
+      
+      alert(`成功导入 ${added} 只股票`);
+      
+      // 刷新列表
+      loadHoldingsList();
+    }
+    
+    // 清空持仓
+    function clearHoldings() {
+      if (!confirm('确定要清空所有持仓吗？')) {
+        return;
+      }
+      localStorage.removeItem('stockHoldings');
+      loadHoldingsList();
+    }
+    
+    // 删除单个持仓
+    function removeHolding(code) {
+      let holdings = getHoldings();
+      holdings = holdings.filter(h => h !== code);
+      saveHoldings(holdings);
+      loadHoldingsList();
+    }
+    
+    // 刷新持仓列表
+    async function refreshHoldings() {
+      document.getElementById('holdingsList').innerHTML = '<p style="color: #8892b0;">刷新中...</p>';
+      await loadHoldingsList();
+    }
+    
+    // 加载持仓列表
+    async function loadHoldingsList() {
+      const container = document.getElementById('holdingsList');
+      const holdings = getHoldings();
+      
+      if (holdings.length === 0) {
+        container.innerHTML = '<p style="color: #8892b0;">暂无持仓，请先导入股票</p>';
+        return;
+      }
+      
+      container.innerHTML = '<p style="color: #8892b0;">加载中...</p>';
+      
+      const stocks = [];
+      
+      // 并行获取所有持仓股票数据
+      await Promise.all(holdings.map(async (code) => {
+        try {
+          const data = await fetchStockData(code);
+          if (data) {
+            const analysis = analyzeData(data);
+            stocks.push({ ...data, analysis });
+          }
+        } catch (e) {
+          console.error(`加载股票 ${code} 失败:`, e);
+        }
+      }));
+      
+      // 按涨跌幅排序（涨最多的在前）
+      stocks.sort((a, b) => b.changePercent - a.changePercent);
+      
+      // 显示列表
+      let html = '<div style="display: grid; gap: 15px;">';
+      
+      for (const stock of stocks) {
+        const changeColor = stock.change >= 0 ? '#ff6b6b' : '#00ff88';
+        const scoreColor = stock.analysis.score >= 80 ? '#00ff88' : 
+                          stock.analysis.score >= 60 ? '#ffa502' : '#ff6b6b';
+        
+        html += `
+          <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 15px; cursor: pointer; position: relative;"
+               onclick="analyzeHoldingStock('${stock.code}')">
+            <div style="position: absolute; top: 10px; right: 10px; z-index: 10;">
+              <button onclick="event.stopPropagation(); removeHolding('${stock.code}')" 
+                      style="background: rgba(255,71,87,0.3); border: none; border-radius: 6px; color: #ff6b6b; padding: 5px 10px; cursor: pointer; font-size: 0.8em;">删除</button>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-weight: bold; color: #fff; font-size: 1.1em;">${stock.name}</div>
+                <div style="color: #8892b0; font-size: 0.9em;">${stock.code}</div>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 1.8em; font-weight: bold; color: ${changeColor};">
+                  ${stock.change >= 0 ? '+' : ''}${stock.changePercent.toFixed(2)}%
+                </div>
+                <div style="color: #fff; font-size: 1.2em;">¥${stock.price.toFixed(2)}</div>
+              </div>
+            </div>
+            <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+              <div style="color: #8892b0; font-size: 0.85em;">
+                评分: <span style="color: ${scoreColor}; font-weight: bold;">${stock.analysis.score}分</span>
+                | PE: ${stock.pe > 0 ? stock.pe.toFixed(2) : '--'}
+                | 市值: ${stock.marketCap > 0 ? stock.marketCap.toFixed(0) : '--'}亿
+              </div>
+              <div style="color: ${stock.analysis.score >= 70 ? '#00ff88' : '#8892b0'}; font-size: 0.85em;">
+                ${stock.analysis.score >= 70 ? '✓ 推荐' : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      
+      html += '</div>';
+      container.innerHTML = html;
+    }
+    
+    // 分析持仓股票（点击跳转）
+    function analyzeHoldingStock(code) {
+      document.getElementById('stockCode').value = code;
+      document.getElementById('holdingsResult').style.display = 'none';
       analyzeStock();
     }
   </script>
