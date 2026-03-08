@@ -811,54 +811,63 @@
 
     // ==================== 热点推荐功能 ====================
     
-    // 实时获取热点板块数据（东方财富API）
+    // 热点板块配置（基于常见热门板块）
+    const HOT_SECTORS_CONFIG = [
+      { name: '人工智能', stocks: ['300308', '002230', '000938', '600728', '300418'] },
+      { name: '新能源', stocks: ['300750', '002594', '601012', '600438', '002812'] },
+      { name: '半导体', stocks: ['688981', '002371', '603501', '300782', '600584'] },
+      { name: '医药生物', stocks: ['600276', '000538', '300122', '603259', '300760'] },
+      { name: '白酒', stocks: ['600519', '000858', '000568', '002304', '600809'] },
+      { name: '银行', stocks: ['600036', '601398', '601288', '601939', '601988'] },
+      { name: '券商', stocks: ['600030', '300059', '601688', '600837', '000776'] },
+      { name: '军工', stocks: ['600893', '000768', '600372', '002179', '600760'] },
+      { name: '消费电子', stocks: ['002475', '000725', '300433', '601138', '002241'] },
+      { name: '光伏', stocks: ['601012', '600438', '002129', '688599', '300274'] }
+    ];
+    
+    // 实时获取热点板块数据（基于腾讯财经实时计算涨跌幅）
     async function fetchHotSectors() {
       try {
-        // 使用东方财富行业板块涨幅榜
-        const response = await fetch('https://push2.eastmoney.com/api/qt/clist/get?pn=1&pz=20&po=1&np=1&fltt=2&invt=2&fid=f12&fs=m:90+t:2+f:!50&fields=f12,f13,f14,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f20,f21,f22,f23,f24,f25,f26,f27,f28,f29,f30,f31,f32,f33,f34,f35,f36,f37,f38,f39,f40,f41,f42,f43,f44,f45,f46,f47,f48,f49,f50,f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63,f64,f65,f66,f67,f68,f69,f70,f71,f72,f73,f74,f75,f76,f77,f78,f79,f80,f81,f82,f83,f84,f85,f86,f87,f88,f89,f90,f91,f92,f93,f94,f95,f96,f97,f98,f99,f100');
-        const data = await response.json();
+        // 获取所有配置板块的股票数据，计算板块平均涨跌幅
+        const sectorsWithChange = [];
         
-        if (!data.data || !data.data.diff) {
-          throw new Error('无法获取热点数据');
+        for (const sector of HOT_SECTORS_CONFIG) {
+          try {
+            // 获取板块内前3只股票的实时数据
+            const stockData = await Promise.all(
+              sector.stocks.slice(0, 3).map(code => fetchStockData(code).catch(() => null))
+            );
+            
+            // 计算平均涨跌幅
+            const validStocks = stockData.filter(s => s !== null);
+            if (validStocks.length > 0) {
+              const avgChange = validStocks.reduce((sum, s) => sum + s.changePercent, 0) / validStocks.length;
+              sectorsWithChange.push({
+                name: sector.name,
+                stocks: sector.stocks,
+                changePercent: avgChange
+              });
+            }
+          } catch (e) {
+            console.error(`获取板块 ${sector.name} 数据失败:`, e);
+          }
         }
         
-        // 取涨幅前10的板块
-        const sectors = data.data.diff.slice(0, 10).map(item => ({
-          code: item.f12,  // 板块代码
-          name: item.f14,  // 板块名称
-          changePercent: item.f3,  // 涨跌幅
-          leadingStock: item.f12  // 用板块代码关联
-        }));
+        // 按涨跌幅排序
+        sectorsWithChange.sort((a, b) => b.changePercent - a.changePercent);
         
-        return sectors;
+        return sectorsWithChange.slice(0, 8);
       } catch (error) {
         console.error('获取热点板块失败:', error);
-        // 备用：返回一些默认板块
-        return [
-          { code: 'BK0428', name: '人工智能', changePercent: 5.2 },
-          { code: 'BK0438', name: '新能源', changePercent: 3.8 },
-          { code: 'BK0440', name: '半导体', changePercent: 3.5 }
-        ];
+        // 备用：返回默认板块（无涨跌幅）
+        return HOT_SECTORS_CONFIG.slice(0, 5).map(s => ({...s, changePercent: 0}));
       }
     }
     
     // 获取板块内的领涨股票
-    async function fetchSectorStocks(sectorCode) {
-      try {
-        // 东方财富板块成分股API
-        const response = await fetch(`https://push2.eastmoney.com/api/qt/clist/get?pn=1&pz=10&po=1&np=1&fltt=2&invt=2&fid=f3&fs=b:${sectorCode}+f:!50&fields=f12,f13,f14,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13,f14,f15,f16,f17,f18,f19,f20,f21,f22,f23,f24,f25,f26,f27,f28,f29,f30,f31,f32,f33,f34,f35,f36,f37,f38,f39,f40,f41,f42,f43,f44,f45,f46,f47,f48,f49,f50,f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63,f64,f65,f66,f67,f68,f69,f70,f71,f72,f73,f74,f75,f76,f77,f78,f79,f80,f81,f82,f83,f84,f85,f86,f87,f88,f89,f90,f91,f92,f93,f94,f95,f96,f97,f98,f99,f100`);
-        const data = await response.json();
-        
-        if (!data.data || !data.data.diff) {
-          return [];
-        }
-        
-        // 取涨幅前5的股票代码
-        return data.data.diff.slice(0, 5).map(item => item.f12);
-      } catch (error) {
-        console.error(`获取板块 ${sectorCode} 股票失败:`, error);
-        return [];
-      }
+    async function fetchSectorStocks(sectorName) {
+      const sector = HOT_SECTORS_CONFIG.find(s => s.name === sectorName);
+      return sector ? sector.stocks : [];
     }
     
     // 加载热点新闻和推荐股票
