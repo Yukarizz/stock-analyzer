@@ -926,7 +926,7 @@
         const changeSign = sector.changePercent >= 0 ? '+' : '';
         html += `
           <div style="background: ${color}20; border: 1px solid ${color}; border-radius: 20px; padding: 10px 20px; cursor: pointer;" 
-               onclick="analyzeSectorStock('${sector.name}', ${JSON.stringify(sector.stocks || []).replace(/"/g, '&quot;')})">
+               onclick="analyzeSectorStock('${sector.name}')">
             <span style="color: ${color}; font-weight: bold;">${sector.name}</span>
             <span style="color: ${changeColor}; font-size: 0.9em; margin-left: 8px;">${changeSign}${sector.changePercent?.toFixed(2) || 0}%</span>
           </div>
@@ -1031,9 +1031,15 @@
     }
     
     // 分析板块股票（点击板块时调用）
-    async function analyzeSectorStock(sectorName, stocks) {
-      document.getElementById('stockCode').value = stocks[0];
-      analyzeStock();
+    async function analyzeSectorStock(sectorName) {
+      // 从配置中查找该板块的股票
+      const sector = HOT_SECTORS_CONFIG.find(s => s.name === sectorName);
+      if (sector && sector.stocks.length > 0) {
+        document.getElementById('stockCode').value = sector.stocks[0];
+        analyzeStock();
+      } else {
+        showError('未找到该板块的股票');
+      }
     }
     
     // 显示股票详情
