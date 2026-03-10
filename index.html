@@ -881,12 +881,6 @@
         // 实时获取热点板块
         const hotSectors = await fetchHotSectors();
         
-        // 为每个板块获取领涨股票
-        for (let sector of hotSectors) {
-          sector.stocks = await fetchSectorStocks(sector.code);
-          sector.count = sector.stocks.length;
-        }
-        
         // 显示热点板块
         displayHotSectors(hotSectors);
         
@@ -897,8 +891,14 @@
           </div>
         `;
         
-        // 分析推荐股票
+        // 分析推荐股票（实时获取）
         await analyzeRecommendedStocks(hotSectors);
+        
+        // 自动刷新：每30秒更新一次
+        if (window.hotNewsInterval) clearInterval(window.hotNewsInterval);
+        window.hotNewsInterval = setInterval(() => {
+          refreshHotNews();
+        }, 30000);
         
         document.getElementById('loading').style.display = 'none';
         document.getElementById('hotNewsResult').style.display = 'block';
@@ -1028,6 +1028,24 @@
       });
       html += '</div>';
       container.innerHTML = html;
+    }
+    
+    // 后台刷新热点数据（不显示loading）
+    async function refreshHotNews() {
+      try {
+        const hotSectors = await fetchHotSectors();
+        displayHotSectors(hotSectors);
+        await analyzeRecommendedStocks(hotSectors);
+        
+        // 更新时间
+        document.getElementById('newsList').innerHTML = `
+          <div style="padding: 15px; color: #00d9ff; text-align: center;">
+            📅 更新时间：${new Date().toLocaleString('zh-CN')}
+          </div>
+        `;
+      } catch (e) {
+        console.error('刷新失败:', e);
+      }
     }
     
     // 分析板块股票（点击板块时调用）
